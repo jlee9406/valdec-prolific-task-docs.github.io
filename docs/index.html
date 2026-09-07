@@ -1,0 +1,2748 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dynamic Reward Task</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  background:#111; color:#e0e0e0;
+  font-family:'Segoe UI', system-ui, sans-serif;
+  overflow:hidden; height:100vh; width:100vw;
+}
+
+/* ── BUTTONS ─────────────────────────────────────────────── */
+.btn {
+  padding:15px 50px; font-size:1.05rem; font-weight:600;
+  border:none; border-radius:8px; cursor:pointer;
+  background:linear-gradient(135deg,#e2b714,#d4a20a);
+  color:#1a1a2e; transition:transform .12s; margin:5px;
+}
+.btn:hover  { transform:translateY(-2px); }
+.btn:active { transform:translateY(0); }
+.btn-sec {
+  padding:13px 30px; font-size:.95rem; font-weight:600;
+  border:1px solid rgba(255,255,255,.22); border-radius:8px; cursor:pointer;
+  background:rgba(255,255,255,.07); color:#ccc; margin:5px; transition:background .15s;
+}
+.btn-sec:hover { background:rgba(255,255,255,.14); color:#fff; }
+
+/* ── CONSENT ─────────────────────────────────────────────── */
+#consent-screen {
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  height:100vh; padding:2rem; background:#111; overflow-y:auto;
+}
+#consent-screen h1 { font-size:2rem; margin-bottom:1.4rem; color:#e2b714; text-align:center; }
+.consent-box {
+  max-width:740px; width:100%; background:#1a1a2e;
+  border:1px solid rgba(255,255,255,.12); border-radius:10px;
+  padding:1.5rem 2rem; font-size:.97rem; line-height:1.9; color:#b0b0c8;
+  overflow-y:auto; max-height:48vh; margin-bottom:1.3rem;
+}
+.consent-box ul { padding-left:1.4em; margin:.4em 0; }
+.consent-box li { margin-bottom:.3em; }
+.consent-box strong { color:#e0e0e0; }
+#consent-check-row {
+  display:flex; align-items:flex-start; gap:10px;
+  max-width:740px; margin-bottom:1.3rem; font-size:.93rem; color:#b0b0c8;
+}
+#consent-check { width:18px; height:18px; flex-shrink:0; margin-top:3px; cursor:pointer; }
+#consent-btn   { opacity:.4; transition:opacity .2s; }
+
+/* ── TUTORIAL ─────────────────────────────────────────────── */
+#tutorial-screen {
+  display:none; flex-direction:column; align-items:center; justify-content:space-between;
+  height:100vh; background:#111;
+}
+#tut-topbar {
+  width:100%; padding:18px 36px 0;
+  display:flex; align-items:center; justify-content:space-between; flex-shrink:0;
+}
+#tut-label { font-size:.75rem; color:#444; text-transform:uppercase; letter-spacing:.08em; }
+#tut-dots  { display:flex; gap:8px; }
+.dot {
+  width:9px; height:9px; border-radius:50%;
+  background:rgba(255,255,255,.15); transition:background .3s;
+}
+.dot.active { background:#e2b714; }
+.dot.done   { background:rgba(226,183,20,.38); }
+
+#tut-body {
+  display:flex; flex-direction:column; align-items:center;
+  justify-content:center; flex:1; width:100%;
+  padding:0 16px; gap:4px;
+}
+
+#demo-canvas {
+  border-radius:12px; background:#2B2B3A; cursor:pointer; flex-shrink:0;
+  margin-bottom:18px;
+}
+
+#tut-text {
+  max-width:min(820px, 96vw); width:100%; text-align:center; flex-shrink:0; padding:0 6px;
+}
+#tut-title {
+  font-size:1.5rem; font-weight:700; color:#e2b714;
+  margin-bottom:14px;
+}
+#tut-desc {
+  font-size:1.05rem; line-height:1.88; color:#b0b0c8; text-align:left;
+}
+#tut-desc strong { color:#e2e2e2; }
+#tut-desc em     { color:#90CAF9; font-style:normal; }
+#tut-desc ul     { padding-left:1.6em; margin:.6em 0 0; }
+#tut-desc li     { margin-bottom:.5em; }
+
+#tut-nav {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:14px 36px 28px; max-width:min(820px, 96vw); width:100%; flex-shrink:0;
+}
+#tut-hint {
+  flex:1; text-align:center; font-size:.92rem; color:#555; padding:0 12px;
+  line-height:1.55;
+}
+
+/* ── COMPREHENSION CHECK ─────────────────────────────────── */
+#tut-answers {
+  display:none; justify-content:center; gap:16px;
+  margin-top:20px; flex-wrap:wrap;
+}
+.ans-btn {
+  /* v3: padding reduced from 48px so 3-4 numeric options fit one row */
+  padding:13px 26px; min-width:120px; font-size:1.05rem; font-weight:600;
+  border:2px solid rgba(255,255,255,.18); border-radius:8px;
+  background:rgba(255,255,255,.06); color:#ccc; cursor:pointer;
+  transition:background .15s, border-color .15s;
+}
+.ans-btn:hover            { background:rgba(255,255,255,.13); border-color:rgba(255,255,255,.35); }
+.ans-btn.ans-correct      { border-color:#4caf50; background:rgba(76,175,80,.14);  color:#a5d6a7; pointer-events:none; }
+.ans-btn.ans-incorrect    { border-color:#f44336; background:rgba(244,67,54,.10);  color:#ef9a9a; pointer-events:none; }
+
+/* ── LANDING ─────────────────────────────────────────────── */
+#landing-screen {
+  display:none; flex-direction:column; align-items:center; justify-content:center;
+  height:100vh; background:#111; padding:2rem; text-align:center;
+}
+#landing-screen h1 { font-size:1.9rem; color:#e2b714; margin-bottom:.4rem; }
+#landing-screen .sub { font-size:.95rem; color:#666; margin-bottom:2.4rem; }
+.land-cards { display:flex; flex-wrap:wrap; justify-content:center; gap:16px; max-width:680px; }
+.land-card {
+  background:#1a1a2e; border:1px solid rgba(255,255,255,.1); border-radius:14px;
+  padding:1.5rem 1.4rem 1.3rem; text-align:center; cursor:pointer;
+  transition:border-color .2s, background .2s, transform .15s;
+  min-width:160px; flex:1; max-width:210px;
+}
+.land-card:hover { border-color:rgba(226,183,20,.55); background:#1e1e3a; transform:translateY(-3px); }
+.land-card .ci   { font-size:2rem; margin-bottom:.55rem; line-height:1; }
+.land-card .ct   { font-size:1rem; font-weight:700; color:#e0e0e0; margin-bottom:.3rem; }
+.land-card .cd   { font-size:.78rem; color:#555; line-height:1.5; }
+.land-card.primary { border-color:rgba(226,183,20,.35); }
+.land-card.primary .ct { color:#e2b714; }
+
+/* ── HUD ─────────────────────────────────────────────────── */
+#hud {
+  position:fixed; top:12px; left:50%; transform:translateX(-50%);
+  display:none; gap:24px; z-index:10;
+  background:rgba(0,0,0,.78); padding:6px 20px;
+  border-radius:10px; border:1px solid rgba(255,255,255,.1); font-size:.85rem;
+}
+.hud-item  { text-align:center; }
+.hud-label { font-size:.63rem; text-transform:uppercase; letter-spacing:.06em; color:#555; }
+.hud-value { font-size:1rem; font-weight:700; color:#e2b714; }
+#hud-prog-wrap { display:none; align-items:center; gap:8px; }
+#hud-prog-bar  { width:80px; height:6px; background:rgba(255,255,255,.1); border-radius:3px; overflow:hidden; }
+#hud-prog-fill { height:100%; width:0%; background:#e2b714; border-radius:3px; transition:width .4s; }
+
+/* ── PAUSE ───────────────────────────────────────────────── */
+#practice-exit-wrap,
+#pause-wrap {
+  position:fixed; top:14px; right:20px; z-index:15;
+  display:none; flex-direction:column; align-items:flex-end; gap:3px;
+}
+#practice-exit-btn,
+#pause-btn {
+  background:rgba(255,255,255,.1); border:1px solid rgba(255,255,255,.2);
+  color:#bbb; font-size:.8rem; padding:5px 14px;
+  border-radius:6px; cursor:pointer;
+}
+#pause-btn:hover:not(:disabled) { background:rgba(255,255,255,.2); }
+#pause-btn:disabled { opacity:.35; cursor:not-allowed; }
+#pause-note {
+  font-size:.68rem; color:#444; text-align:right;
+}
+#pause-overlay {
+  display:none; position:fixed; inset:0; z-index:25;
+  background:rgba(0,0,0,.88);
+  flex-direction:column; align-items:center; justify-content:center;
+}
+#pause-overlay h2   { font-size:1.6rem; color:#e2b714; margin-bottom:.8rem; }
+#pause-overlay .pi  { color:#999; font-size:1rem; margin-bottom:1.5rem; }
+
+/* ── TASK CANVAS ─────────────────────────────────────────── */
+#task-canvas {
+  position:absolute; inset:0; width:100vw; height:100vh;
+  display:none; cursor:crosshair;
+}
+
+/* ── END ─────────────────────────────────────────────────── */
+#end-screen {
+  display:none; flex-direction:column; align-items:center; justify-content:center;
+  height:100vh; background:#111; text-align:center; padding:2rem;
+}
+#end-screen h1 { font-size:2.2rem; margin-bottom:.5rem; color:#2196F3; }
+#end-screen .stats { font-size:1.05rem; color:#b0b0c8; line-height:1.8; margin:1rem 0; }
+#completion-code-box {
+  margin:1.2rem 0; padding:1.2rem 2rem;
+  background:#1a1a2e; border:1px solid rgba(255,255,255,.15);
+  border-radius:10px; text-align:center;
+}
+</style>
+</head>
+<body>
+
+<!-- ════════ CONSENT ════════ -->
+<div id="consent-screen">
+  <h1>Participant Information &amp; Consent</h1>
+  <div class="consent-box">
+    <strong>Welcome to our economic decision-making study!</strong><br><br>
+
+    In this study, we investigate how people learn to make reward-based decisions.
+    You will complete a task in which you choose between two images that differ in their reward probability.
+    Your goal is to discover which image has the higher reward probability and pick it as often as possible.<br><br>
+
+    <strong>Can I participate?</strong><br>
+    To be eligible, you <strong>must</strong> meet all of the following criteria:
+    <ul>
+      <li>18 years of age or older</li>
+      <li>Fluent in English</li>
+      <li>Have not previously participated in this experiment</li>
+    </ul><br>
+
+    <strong>How much can I earn?</strong><br>
+    You will be paid <strong>9 GBP</strong> for completing the study.
+    On top of this, you can earn up to <strong>3 GBP bonus</strong> based on your performance — the more rewards you collect, the higher your bonus.<br><br>
+
+    <strong>How long does it take?</strong><br>
+    The study will take roughly <strong>50–60 minutes</strong>. You can take one break during the task.<br><br>
+
+    <strong>What device should I use?</strong><br>
+    Please use a <strong>computer, laptop, or tablet</strong>. A phone screen is too small for this task.<br><br>
+
+    <strong>Confidentiality</strong><br>
+    Your participation will remain confidential. Your Prolific ID will <strong>not</strong> be shared with anyone outside the research team.<br><br>
+
+    <strong>Participation and withdrawal</strong><br>
+    Your participation is completely voluntary. You may withdraw at any time; however, you will only be paid upon completion and after returning to Prolific using the link provided at the end of the study.<br><br>
+
+    <strong>Contact</strong><br>
+    If you have questions about your participation or payment, please contact the
+    <a href="mailto:jungmin.lee@student.uni-tuebingen.de" style="color:inherit;text-decoration:underline;text-underline-offset:2px;opacity:.7">team</a>.<br><br>
+
+    <strong>Data Protection</strong><br>
+    Your data will be stored securely and can be requested through the contact above.
+    By accepting this agreement, you consent that your data may be used within the lab and shared or published in anonymised form.
+  </div>
+  <div id="consent-check-row">
+    <input type="checkbox" id="consent-check"
+      onchange="document.getElementById('consent-btn').style.opacity=this.checked?'1':'0.4'">
+    <label for="consent-check">"I understand the nature of the study and agree to participate voluntarily."</label>
+  </div>
+  <button class="btn" id="consent-btn"
+    onclick="if(document.getElementById('consent-check').checked){
+      document.getElementById('consent-screen').style.display='none';
+      startTutorial();}">
+    Agree &amp; Continue
+  </button>
+</div>
+
+<!-- ════════ TUTORIAL ════════ -->
+<div id="tutorial-screen">
+  <div id="tut-topbar">
+    <span id="tut-label">Tutorial</span>
+    <div id="tut-dots"></div>
+  </div>
+  <div id="tut-body">
+    <canvas id="demo-canvas"></canvas>
+    <div id="tut-text">
+      <div id="tut-title"></div>
+      <div id="tut-desc"></div>
+      <div id="tut-answers"></div>
+    </div>
+  </div>
+  <div id="tut-nav">
+    <button class="btn-sec" id="tut-back" onclick="tutGoto(tutStep-1)">← Back</button>
+    <span id="tut-hint"></span>
+    <button class="btn" id="tut-next" onclick="tutNext()">Next →</button>
+  </div>
+</div>
+
+<!-- ════════ LANDING ════════ -->
+<div id="landing-screen">
+  <h1 id="landing-title">Almost there!</h1>
+  <div class="sub" id="landing-sub">Complete the practice session before starting</div>
+  <div class="land-cards">
+    <div class="land-card" onclick="replayTutorial()">
+      <div class="ci">🔁</div>
+      <div class="ct">Tutorial</div>
+      <div class="cd">Review the steps again</div>
+    </div>
+    <div class="land-card" id="practice-card" onclick="startPracticeFlow()">
+      <div class="ci">🎯</div>
+      <div class="ct">Practice <span id="practice-badge" style="font-size:.7rem;background:rgba(226,183,20,.25);color:#e2b714;border-radius:4px;padding:1px 6px;margin-left:4px">required</span></div>
+      <div class="cd">gauge bars, hints shown</div>
+    </div>
+    <div class="land-card primary" id="start-card" onclick="if(practiceCompleted)startMainFlow()" style="opacity:.4;cursor:not-allowed">
+      <div class="ci">🚀</div>
+      <div class="ct">Start Task</div>
+      <div class="cd" id="start-cd">Complete practice first</div>
+      <div style="font-size:.72rem;color:rgba(255,255,255,.28);margin-top:.5rem;line-height:1.4">NO gauge bars · NO switch alert</div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════ HUD ════════ -->
+<div id="hud">
+  <div class="hud-item" id="hud-block-item">
+    <div class="hud-label">Block</div>
+    <div class="hud-value" id="hud-block">—</div>
+  </div>
+  <div id="hud-prog-wrap">
+    <div class="hud-label" style="margin-right:4px">Progress</div>
+    <div id="hud-prog-bar"><div id="hud-prog-fill"></div></div>
+  </div>
+  <div class="hud-item" id="hud-trial-item">
+    <div class="hud-label">Trial</div>
+    <div class="hud-value" id="hud-trial">—</div>
+  </div>
+  <div class="hud-item">
+    <div class="hud-label">Score</div>
+    <div class="hud-value" id="hud-score">0</div>
+  </div>
+</div>
+
+<!-- ════════ PAUSE ════════ -->
+<div id="pause-wrap">
+  <button id="pause-btn">Pause</button>
+  <span id="pause-note">1 pause available</span>
+</div>
+<!-- v3.5: leave practice at any time and return to the menu -->
+<div id="practice-exit-wrap" style="display:none">
+  <button id="practice-exit-btn">← Back to menu</button>
+</div>
+<div id="pause-overlay">
+  <h2>Paused</h2>
+  <div class="pi" id="pause-info"></div>
+  <button class="btn" id="resume-btn">Resume</button>
+</div>
+
+<!-- ════════ TASK CANVAS ════════ -->
+<canvas id="task-canvas"></canvas>
+
+<!-- ════════ END ════════ -->
+<div id="end-screen">
+  <h1>Task Complete!</h1>
+  <div class="stats" id="end-stats"></div>
+  <div id="submission-status" style="font-size:.84rem;color:#666;margin-top:.5rem"></div>
+  <div style="margin-top:1.8rem;text-align:center;">
+    <a id="prolific-link" href="#"
+       style="display:inline-block;padding:14px 36px;background:linear-gradient(135deg,#e2b714,#d4a20a);
+              color:#1a1a2e;font-weight:700;font-size:1.05rem;border-radius:8px;text-decoration:none;">
+      Return to Prolific →
+    </a>
+    <div style="margin-top:1.2rem;font-size:.9rem;color:#666;">
+      Or copy your completion code manually:
+      <strong id="completion-code" style="color:#e2b714;letter-spacing:.1em;margin-left:6px"></strong>
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+// ═══════════════════════════════════════════════════════════════
+//  RESEARCHER CONFIG
+// ═══════════════════════════════════════════════════════════════
+// Completion code is stored as char codes (not a literal string) and the redirect URL is
+// assembled at runtime from separate fragments. This is NOT real security — anyone who reads
+// and runs this script (including any participant mid-task, via dev tools) can still recover
+// the code. It only prevents the code from showing up as a plain, ctrl-F/grep-able string to
+// someone casually skimming the GitHub repo without ever loading the page. See chat for the
+// real safety net (manual review of submitted data completeness before approving on Prolific).
+const _ccCodes = [67, 49, 54, 53, 70, 88, 85, 85];
+const _completionCode = _ccCodes.map(c => String.fromCharCode(c)).join('');
+const _prolificBase = ['https://app.prolific', '.com/submissions/complete'].join('');
+const RESEARCHER_CFG = {
+  // DataPipe experiment ID -> OSF. Data is POSTed to pipe.jspsych.org (see pipeSave).
+  //   DataPipe experiment : JyCvtKRd7NMo
+  //   OSF project         : f9w4n
+  //   OSF data component  : afvmw   (files land here)
+  // v3.8: was 'fQtpJFf3YxFU'. That pipeline did collect the v2 data; it has since
+  // been disconnected, so the old ID now returns EXPERIMENT_NOT_FOUND. v2 data is
+  // unaffected — it lives under the old OSF component.
+  datapipeExperimentID: 'JyCvtKRd7NMo',
+  completionCode:      _completionCode,
+  prolificRedirectURL: `${_prolificBase}?cc=${_completionCode}`,
+};
+
+// ═══════════════════════════════════════════════════════════════
+//  v3 CHANGELOG
+// ═══════════════════════════════════════════════════════════════
+// The schedule PARAMETERS (CFG.pairP, valdecBlockLength, numCycles, timing) are
+// bit-identical to v2. Items 1-4 below change only what the participant is TOLD
+// or SHOWN. Item 5 is the one change to the reward rule itself — a bug fix that
+// brings v3 into line with the lab/animal MATLAB; read it before pooling v2 and
+// v3 data.
+//
+//   1. Demo + practice now use the REAL levels. v2 demoed 90/10 and practised
+//      75/25, then tested 85/15 and 66/33 — participants met the hard level for
+//      the first time when it counted, and 10 of 20 blocks are at that level.
+//   2. New anti-WSLS step ("A miss is normal"). The largest measured human/animal
+//      difference is lose-shift on the better option:
+//        P(shift|better,LOSE) - P(shift|better,WIN)
+//        humans  +0.318  [+0.154, +0.646]  (n=8)
+//        monkeys +0.058  [-0.052, +0.151]  (n=12 sessions)   MWU p=1e-5, ranges disjoint.
+//      The animals are near outcome-insensitive one trial back; humans over-react
+//      to a single miss. STEP_MISS teaches the true miss rate explicitly.
+//   3. Structure now stated, not implied: complementarity (p1+p2≈1), that only
+//      TWO gap sizes exist, and that changes come roughly every 30 choices.
+//   4. Comprehension checks are numeric multiple-choice, not Yes/No, and every
+//      attempt is logged (`attempt` field) so comprehension can be used as a
+//      per-participant covariate.
+//
+//   5. REWARD RULE — one fix, and one deliberate divergence from the lab.
+//
+//      5a. FIXED (v3.7): a block's first trial now counts toward the run.
+//          calcReward's `lastChoice === null` branch reported seq = 1 into the
+//          CSV but left the internal `choiceSequence` at 0, so a block's FIRST
+//          switch used exponent (0+1) instead of (1+1) — 0.33 instead of 0.551
+//          on a 66/33 block. Only the first run of each block was affected
+//          (~19 trials/session, ~3%); everything after the first switch was
+//          already correct. The practice gauge, which does count that trial,
+//          visibly disagreed with the reward actually delivered.
+//          This matches the lab: in calculate_rewardP.m `sequence` is a SINGLE
+//          stored variable, set to 1 on the first correct trial and read back
+//          from the previous trial. The JS port had split that into a reported
+//          value and an internal counter, which desynchronised.
+//          Effect: random-choice reward rate 0.608 -> 0.619.
+//
+//      5b. DELIBERATE DIVERGENCE — runBlock resets `choiceSequence` and
+//          `lastChoice` at every block, so the first trial of a new block always
+//          pays the base rate. THE LAB/ANIMAL TASK DOES NOT DO THIS.
+//          calculate_rewardP.m reads last_corrects(end) session-wide and no
+//          reset exists in the pure-valdec path, so the previous block's run
+//          length carries across the boundary: a switch on a block's first
+//          trial is paid 1-(1-p)^(run+1), often near 1.0.
+//          Verified on the 20 EEG sessions (vars ... `block = 1`, valdec only,
+//          no DMTS interleaving), block-first trials:
+//             switched choice  n=65   observed 0.723 |
+//                              carry-over predicts 0.708 | reset predicts 0.463
+//                              (reset rejected, p = 2.8e-05)
+//             stayed           n=101  observed 0.554 | both models predict 0.486
+//                              (n.s., p = 0.2 — the two models agree here)
+//          Kept on purpose: a fresh block should not inherit the previous
+//          block's accumulation. CONSEQUENCE: the first trial of every block
+//          does not mean the same thing online as in the animal data. Exclude
+//          block-first trials, or model the boundary explicitly, when pooling.
+//
+//      5c. Not inherited by v3: sessions run with `block = 3` interleave DMTS,
+//          and trial_dmts.m stores the TRIAL INDEX in the same `sequence` field
+//          that calculate_rewardP reads as a run length — so a valdec trial
+//          after a DMTS trial can inherit an exponent in the hundreds and be
+//          paid at P ~= 1.0 (~2% of valdec trials in those sessions). The EEG
+//          sessions used `block = 1` and are NOT affected. v3 has no DMTS.
+//
+//   6. SCHEDULE (v3.9) — longer blocks, shorter ITI. These trade off almost
+//      exactly, so session length is unchanged:
+//        valdecBlockLength  [25,35] -> [30,40]   (still 20 blocks, 4 pairs x 5)
+//        timing.iti          1500   -> 1000 ms
+//      Trials/session 600 -> 700 mean (600-800). Main task 36.0 -> 36.2 min,
+//      ~40 min with tutorial+practice; worst case 42 -> 41.4 min. Computed from
+//      the pilots' pooled median RT (404 ms) and measured overhead (~4 min).
+//      Rationale: more within-block trials for model fitting at no time cost,
+//      block COUNT preserved (per-subject consistency measures keep their
+//      denominator), and reversal hazard 0.033 -> 0.029, marginally closer to the
+//      animals' 0.007-0.010. NOTE: trial count was NOT the binding constraint on
+//      model identifiability — monkey sessions truncated to 600 trials still
+//      selected rflr cleanly while humans at the same n did not — so this
+//      tightens parameter estimates, it does not fix discrimination.
+//      CONSEQUENCE: the main-task schedule now differs from v2 and the three
+//      pilots (which ran 25-35). With item 5a, v3 main-task data is no longer
+//      schedule-identical to the pilot data.
+//
+// PRE-REGISTERABLE OUTCOME: v3 should pull the lose-shift asymmetry down toward
+// the animal range (<= +0.15). It is model-free — no fitting required.
+// ═══════════════════════════════════════════════════════════════
+
+// Probability levels actually used by the main task. The tutorial and practice
+// read from HERE so instruction can never drift from the schedule again.
+const P_HI_EASY = 0.85, P_LO_EASY = 0.15;   // "big gap"   pair
+const P_HI_HARD = 0.66, P_LO_HARD = 0.33;   // "small gap" pair
+const MEAN_BLOCK_LEN = 30;                  // midpoint of valdecBlockLength
+// v3.2: practice never discards a timed-out trial (see runTrial). To stop a
+// walked-away participant hanging forever, the hinted target is auto-accepted
+// after this long. Checked once per waitForChoice cycle, so the effective cap is
+// this value rounded up to the next CFG.timing.choiceTimeout boundary.
+const PRACTICE_HINT_CAP_MS = 60000;
+
+// ═══════════════════════════════════════════════════════════════
+//  TASK CONFIG  (Valdec free-choice only — DMTS removed)
+// ═══════════════════════════════════════════════════════════════
+const CFG = {
+  numCycles:         5,
+  cyclePattern:      ['V','V','V','V'],        // 20 Valdec blocks (5 cycles × 4 pairs)
+
+  valdecBlockLength: [30, 40],   // v3.9 (was [25,35]) — see changelog item 6
+
+  pairP: [
+    [0.85, 0.15],
+    [0.66, 0.33],
+    [0.33, 0.66],
+    [0.15, 0.85],
+  ],
+
+  targetDistance: 170,
+  imageSize:      100,
+  cueSize:        120,
+  practiceTrials: 10,
+
+  timing: {
+    fixationInit:  500,
+    cue:           500,
+    delay:         500,
+    sample:        500,
+    choiceTimeout: 5000,
+    feedback:      500,
+    iti:           1000,   // v3.9 (was 1500) — pays for the longer blocks
+  },
+};
+
+// ═══════════════════════════════════════════════════════════════
+//  GLOBALS
+// ═══════════════════════════════════════════════════════════════
+const taskCanvas = document.getElementById('task-canvas');
+const ctx        = taskCanvas.getContext('2d');
+let W, H;
+
+let keyPressed       = null;
+let practiceCompleted = false;
+let allTrialData     = [];   // trial-level records: main task + practice (phase column distinguishes)
+let allTutorialData  = [];   // tutorial events: step views, demo clicks, comprehension checks
+let practiceAttempt  = 0;
+let totalScore    = 0;
+let prolificID    = new URLSearchParams(window.location.search).get('PROLIFIC_PID') || 'unknown';
+function randomID(len = 10) {
+  const chars = '0123456789abcdefghijklmnopqrstuvwxyz';
+  let s = '';
+  for (let i = 0; i < len; i++) s += chars[Math.floor(Math.random() * chars.length)];
+  return s;
+}
+// Unique per-session ID used for DataPipe filenames (DataPipe refuses to save if a filename already exists).
+const subjectId = (prolificID !== 'unknown' ? prolificID : 'anon') + '_' + randomID(6);
+
+// Logs a single tutorial event (step view, demo click, comprehension check answer).
+function logTutorial(event, extra = {}) {
+  allTutorialData.push({
+    participant_id: prolificID,
+    task_type: 'valdec_online_tutorial',
+    phase: 'tutorial',
+    event,
+    ...extra,
+    timestamp: Date.now(),
+  });
+}
+
+let currentP1 = 0.85, currentP2 = 0.15;
+let choiceSequence = 0, lastChoice = null;
+let setPIndex = [];
+
+// ═══════════════════════════════════════════════════════════════
+//  IMAGE GENERATION  (relative units — works at any canvas size)
+// ═══════════════════════════════════════════════════════════════
+function makeCanvas(size, drawFn) {
+  const c = document.createElement('canvas');
+  c.width = c.height = size;
+  drawFn(c);
+  return c;
+}
+
+function drawImageA(cvs) {
+  const g = cvs.getContext('2d'), s = cvs.width;
+  g.fillStyle = '#0D1B2A';
+  g.beginPath(); g.roundRect(0,0,s,s,s*.12); g.fill();
+  [[.21,.25,.15,'rgba(0,188,212,.6)'],[.75,.17,.12,'rgba(38,166,154,.5)'],
+   [.62,.71,.17,'rgba(0,150,136,.55)'],[.25,.79,.10,'rgba(77,208,225,.45)'],
+   [.83,.50,.13,'rgba(0,172,193,.5)']].forEach(([x,y,r,c])=>{
+     g.fillStyle=c; g.beginPath(); g.arc(x*s,y*s,r*s,0,Math.PI*2); g.fill();
+   });
+  g.fillStyle='#B2EBF2'; g.beginPath();
+  for(let j=0;j<5;j++){
+    const a=(j*72-90)*Math.PI/180,a2=((j*72+36)-90)*Math.PI/180;
+    g.lineTo(s/2+s*.22*Math.cos(a), s/2+s*.22*Math.sin(a));
+    g.lineTo(s/2+s*.09*Math.cos(a2),s/2+s*.09*Math.sin(a2));
+  }
+  g.closePath(); g.fill();
+  g.strokeStyle='rgba(33,150,243,.6)'; g.lineWidth=s*.025;
+  g.beginPath(); g.roundRect(s*.012,s*.012,s*.976,s*.976,s*.11); g.stroke();
+}
+
+function drawImageB(cvs) {
+  const g = cvs.getContext('2d'), s = cvs.width;
+  g.fillStyle='#2A1B0D';
+  g.beginPath(); g.roundRect(0,0,s,s,s*.12); g.fill();
+  [[.17,.21,.25,.12,.3,'rgba(255,152,0,.55)'],[.71,.15,.18,.15,-.5,'rgba(255,183,77,.5)'],
+   [.58,.67,.23,.10,.8,'rgba(245,124,0,.5)'],[.21,.75,.17,.13,-.2,'rgba(255,167,38,.45)'],
+   [.79,.46,.20,.12,.6,'rgba(251,140,0,.5)']].forEach(([x,y,w,h,r,c])=>{
+     g.save(); g.translate(x*s,y*s); g.rotate(r);
+     g.fillStyle=c; g.fillRect(-w*s/2,-h*s/2,w*s,h*s); g.restore();
+   });
+  g.fillStyle='#FFE082'; g.beginPath();
+  g.moveTo(s/2,s/2-s*.23); g.lineTo(s/2+s*.18,s/2);
+  g.lineTo(s/2,s/2+s*.23); g.lineTo(s/2-s*.18,s/2);
+  g.closePath(); g.fill();
+  g.strokeStyle='rgba(255,152,0,.6)'; g.lineWidth=s*.025;
+  g.beginPath(); g.roundRect(s*.012,s*.012,s*.976,s*.976,s*.11); g.stroke();
+}
+
+// Task-resolution images (rebuilt on resize)
+const taskImgs = [
+  makeCanvas(CFG.imageSize, drawImageA),
+  makeCanvas(CFG.imageSize, drawImageB),
+];
+
+// Tutorial demo images (70 px, built once)
+const DEMO_SZ  = 88;
+const demoImgs = [
+  makeCanvas(DEMO_SZ, drawImageA),
+  makeCanvas(DEMO_SZ, drawImageB),
+];
+
+// ═══════════════════════════════════════════════════════════════
+//  TUTORIAL ENGINE
+// ═══════════════════════════════════════════════════════════════
+const dc   = document.getElementById('demo-canvas');
+const dctx = dc.getContext('2d');
+let tutStep    = 0;
+let tutCleanup = null;
+let step6Result = null;   // { chosen, rewarded } — passed to step 7
+let checkAttempts = {};   // v3: question -> number of attempts (logged per answer)
+// v3.5: practice is now leavable. `practiceAbort` is checked between trials and
+// between blocks; `practiceWaitResolve` unblocks the intro / switch-notice
+// screens, which otherwise sit waiting for a keypress.
+let practiceAbort = false;
+let practiceWaitResolve = null;
+// v3.1: which SIDE holds the good image in the demos. Re-rolled whenever a demo
+// step is entered, mirroring runTrial's per-trial offset shuffle. v3.0 pinned the
+// good image to the left in every demo, training a bias the real task contradicts.
+let demoGoodLeft = Math.random() < 0.5;
+
+function initDC() {
+  // v3.4: guard against a zero/!laid-out viewport (hidden tab, pane not yet
+  // composited). Without this the width computes negative and the canvas silently
+  // keeps its 300x150 default, which mangles the demo layouts.
+  const w = Math.min(820, window.innerWidth - 32);
+  const h = Math.min(320, Math.max(220, Math.floor(window.innerHeight * 0.36)));
+  if (w > 0) dc.width  = w;
+  if (h > 0) dc.height = h;
+}
+
+// v3.4: initDC previously ran only inside tutGoto, so resizing the window mid
+// tutorial left the demo canvas at its old size — squares and captions then
+// overflowed. Re-lay out the current step on resize (debounced; step `ready`
+// flags persist, so no progress is lost).
+let _dcResizeTimer = null;
+window.addEventListener('resize', () => {
+  if (document.getElementById('tutorial-screen').style.display === 'none') return;
+  clearTimeout(_dcResizeTimer);
+  _dcResizeTimer = setTimeout(() => tutGoto(tutStep), 150);
+});
+
+// ── Comprehension check factory ───────────────────────────────
+// v3: generalised from Yes/No to an arbitrary option list, so checks can probe
+// the ACTUAL numbers (85/15, 66/33, ~30-trial blocks) rather than a binary that
+// can be passed by guessing. `options` is an array of label strings;
+// `correctLabel` must be one of them.
+function makeCheckStep(question, options, correctLabel, corrFeedback, incorrFeedback) {
+  return {
+    type:  'check',
+    title: '✓ Quick check',
+    desc:  question,
+    hint:  '',
+    ready: false,
+    setup() {
+      setNextEnabled(false);
+      const DW = dc.width, DH = dc.height;
+      dcClear();
+      dctx.font = `bold ${Math.min(DH * .68, DW * .28)}px system-ui`;
+      dctx.textAlign = 'center'; dctx.textBaseline = 'middle';
+      dctx.fillStyle = 'rgba(226,183,20,.10)';
+      dctx.fillText('?', DW/2, DH/2);
+      dctx.textBaseline = 'alphabetic';
+
+      const answersEl = document.getElementById('tut-answers');
+      const hintEl    = document.getElementById('tut-hint');
+      answersEl.style.display = 'flex';
+      answersEl.innerHTML = '';
+      let answered = false;
+
+      options.forEach(label => {
+        const isCorrect = label === correctLabel;
+        const btn = document.createElement('button');
+        btn.className = 'ans-btn';
+        btn.textContent = label;
+        btn.onclick = () => {
+          if (answered) return;
+          answered = true;
+          checkAttempts[question] = (checkAttempts[question] || 0) + 1;
+
+          logTutorial('comprehension_check', {
+            step_index: tutStep, question, answer_given: label,
+            correct: isCorrect ? 1 : 0, attempt: checkAttempts[question],
+          });
+
+          // Highlight buttons
+          btn.classList.add(isCorrect ? 'ans-correct' : 'ans-incorrect');
+          [...answersEl.querySelectorAll('.ans-btn')].forEach(b => {
+            if (b.textContent === correctLabel) b.classList.add('ans-correct');
+          });
+
+          // Prominent feedback box — shown centrally inside the answers area
+          const fb = document.createElement('div');
+          fb.style.cssText = 'width:100%;margin-top:18px;padding:14px 22px;border-radius:10px;'
+            + 'font-size:1rem;line-height:1.7;text-align:center;';
+          if (isCorrect) {
+            fb.style.background = 'rgba(76,175,80,.15)';
+            fb.style.border = '1px solid rgba(76,175,80,.45)';
+            fb.innerHTML = '<strong style="color:#a5d6a7;font-size:1.1rem">✓ Correct!</strong><br>' + corrFeedback;
+            setTimeout(() => setNextEnabled(true), 500);
+          } else {
+            fb.style.background = 'rgba(244,67,54,.13)';
+            fb.style.border = '1px solid rgba(244,67,54,.4)';
+            fb.innerHTML = '<strong style="color:#ef9a9a;font-size:1.1rem">✗ Not quite.</strong><br>'
+              + incorrFeedback;
+
+            // Explicit "← Back to Review" button
+            const backBtn = document.createElement('button');
+            backBtn.className = 'btn-sec';
+            backBtn.style.cssText = 'margin-top:14px;font-size:.95rem;';
+            backBtn.textContent = '← Back to review';
+            backBtn.onclick = () => tutGoto(tutStep - 1);
+            fb.appendChild(document.createElement('br'));
+            fb.appendChild(backBtn);
+          }
+          answersEl.appendChild(fb);
+        };
+        answersEl.appendChild(btn);
+      });
+
+      // v3.5: once practice is done every step has been seen, so revisiting the
+      // tutorial is for reference, not re-testing. Show the correct answer, keep
+      // Next enabled, and take no further answers (nothing is logged here — the
+      // comprehension record stays the participant's genuine first attempts).
+      if (practiceCompleted) {
+        answered = true;
+        [...answersEl.querySelectorAll('.ans-btn')].forEach(b => {
+          if (b.textContent === correctLabel) b.classList.add('ans-correct');
+          else b.style.opacity = '.35';
+          b.style.pointerEvents = 'none';
+        });
+        const fb = document.createElement('div');
+        fb.style.cssText = 'width:100%;margin-top:18px;padding:14px 22px;border-radius:10px;'
+          + 'font-size:1rem;line-height:1.7;text-align:center;'
+          + 'background:rgba(76,175,80,.12);border:1px solid rgba(76,175,80,.35);';
+        fb.innerHTML = '<strong style="color:#a5d6a7">Answer</strong><br>' + corrFeedback;
+        answersEl.appendChild(fb);
+        setNextEnabled(true);
+      }
+
+      return () => {
+        answersEl.style.display = 'none';
+        answersEl.innerHTML = '';
+        hintEl.innerHTML = '';
+        hintEl.style.color = '';
+      };
+    },
+  };
+}
+
+// ── Step definitions ──────────────────────────────────────────
+const STEPS = [
+  // 0 ── Intro  (v3.1: stripped back. The probability set moved to page 2, where
+  //      it is sampled rather than read as bullet points.)
+  {
+    title: 'Two images — one pays out more often',
+    desc:  'On each trial you will see <strong>two images</strong> and pick one.<br><br>'
+         + 'One of them gives rewards <strong>more often</strong> than the other.<br><br>'
+         + 'Find the one with the <strong>higher reward probability</strong>.',
+    hint:  '',
+    setup: step1,
+    ready: true,
+  },
+  // 1 ── Sampling demo  (v3.1: shows the whole probability set BY SAMPLING it)
+  {
+    title: 'How often does each one pay?',
+    desc:  'There are only <strong>two settings</strong>, and this page lets you feel both.<br><br>'
+         + '<strong>Click each image a few times</strong> — you will see <strong>+1</strong> (reward) or <strong>0</strong> (nothing).<br>'
+         + 'Then press <strong>Try the other setting</strong> below and sample that one too.<br><br>'
+         + '<em>Notice that even the better image gives 0 fairly often.</em>',
+    hint:  '',
+    setup: step2,
+    ready: false,
+  },
+  // 2 ── Check 1  (v3: numeric, probes complementarity)
+  makeCheckStep(
+    `If one image rewards <strong>${Math.round(P_HI_EASY*100)}%</strong> of the time, what does the other one reward?`,
+    [`${Math.round(P_LO_EASY*100)}%`, '50%', `${Math.round(P_HI_EASY*100)}%`],
+    `${Math.round(P_LO_EASY*100)}%`,
+    `Correct! The two always add up to about 100%, so ${Math.round(P_HI_EASY*100)}% on one side means ${Math.round(P_LO_EASY*100)}% on the other. Knowing one tells you the other.`,
+    `Not quite — the two probabilities always add up to about 100%. If one is ${Math.round(P_HI_EASY*100)}%, the other must be about ${Math.round(P_LO_EASY*100)}%.`
+  ),
+  // 3 ── Probability change  (v3.1: plainer title, one change shown at a time)
+  {
+    title: 'Probabilities can change',
+    desc:  `The reward probabilities change at random, around every <strong>${MEAN_BLOCK_LEN} trials</strong> — give or take.<br><br>`
+         + 'There is <strong>no alert of the change</strong>.',
+    hint:  '',
+    setup: stepBlockInfo,
+    ready: true,
+  },
+  // 3b ── A miss is normal — the anti-WSLS step  (v3.1: shorter, auto-deals)
+  {
+    title: 'Common mistakes',
+    desc:  `When the gap is small, the better image pays only <strong>${Math.round(P_HI_HARD*100)}%</strong> of the time. `
+         + 'That means <strong>about 1 pick in 3 gives you 0</strong> — even when you picked the right one. '
+         + 'Two or three zeros in a row are completely normal.',
+    hint:  '',
+    setup: stepMissIsNormal,
+    ready: false,
+  },
+  // 3d ── (v3, NEW) Check: don't lose-shift
+  makeCheckStep(
+    'You have been doing well on the left image. You pick it twice more and get <strong>0 both times</strong>. What is the best move?',
+    ['Switch immediately', 'Keep going for now', 'Alternate every trial'],
+    'Keep going for now',
+    'Correct. Two zeros in a row happen all the time even on the better image. Wait for several poor outcomes before concluding anything has changed.',
+    'Not quite. Two zeros in a row are completely normal on the better image — especially in a small-gap stretch. Reacting to one or two misses is the most expensive mistake in this task.'
+  ),
+  // 4 ── Energy gauge
+  {
+    title: 'Reward accumulates when unchosen',
+    desc:  'When you <strong>leave an image unchosen</strong>:<ul>'
+         + '<li>Its reward probability <strong>accumulates</strong> — shown by the gauge bar above it</li>'
+         + '<li>When you finally pick it, you collect the reward and the <strong>bar resets</strong></li>'
+         + '</ul><br>'
+         + '<strong>Click each image</strong> to see the gauges respond.<br>'
+         + '<em>Note: gauge bars are shown during practice only. In the main task the bar is hidden.</em>',
+    hint:  'Click to choose — watch the gauge',
+    setup: step3,
+    ready: false,
+  },
+  // 5 ── Check 2  (v3: converted to the option-list signature)
+  makeCheckStep(
+    'You have ignored the <strong>blue</strong> image for <strong>5 choices in a row</strong>. The chance of getting a reward from the blue image now is:',
+    ['Lower than its usual chance', 'The same', 'Higher than its usual chance'],
+    'Higher than its usual chance',
+    'Correct! The longer you leave an image unchosen, the more its reward chance builds up — so a long-neglected image is worth going back to.',
+    'Not quite — an unchosen image\'s reward chance <strong>builds up</strong> while you ignore it, so after 5 skipped choices it is <strong>higher</strong> than its usual rate. Go back and watch the gauge.'
+  ),
+  // 6 ── Collapsed trial flow
+  {
+    title: 'How one trial goes',
+    desc:  'Each trial follows these steps:<ul>'
+         + '<li><strong>① Fixation dot</strong> appears at the centre</li>'
+         + '<li><strong>② Two images appear</strong> — dot is still on, <em>do not respond yet</em></li>'
+         + '<li><strong>③ Dot disappears</strong> — now press <strong>←</strong> or <strong>→</strong> to choose within 5 seconds</li>'
+         + '<li><strong>④ See your result</strong> (+1 or 0)</li>'
+         + '</ul><br>'
+         + 'The animation loops — <strong>try making a choice</strong> when you see step ③!',
+    hint:  'Press ← or → when the dot disappears',
+    setup: stepTrialFlow,
+    ready: false,
+  },
+  // 7 ── Feedback + bonus
+  {
+    title: 'Your score becomes your bonus',
+    desc:  'After each choice you see the outcome:<ul>'
+         + '<li><strong>+1</strong> — you earned a reward this trial</li>'
+         + '<li><strong>0</strong> — no reward this time</li>'
+         + '</ul><br>'
+         + 'Your <strong>bonus payment</strong> is proportional to your total score.<br>'
+         + 'Every <strong>+1</strong> you collect adds to your bonus — pick strategically to maximise your earnings!',
+    hint:  '',
+    setup() {
+      const cleanup = step7();
+      const tid = setTimeout(() => setNextEnabled(true), 3000);
+      return () => { cleanup(); clearTimeout(tid); };
+    },
+    ready: false,
+    nextLabel: "I'm ready — start practice →",
+  },
+];
+
+function tutGoto(n) {
+  if (n < 0) return;
+  if (tutCleanup) { tutCleanup(); tutCleanup = null; }
+
+  if (n >= STEPS.length) { showLanding(); return; }
+
+  tutStep = n;
+  const s = STEPS[n];
+  logTutorial('step_enter', { step_index: n, step_title: s.title });
+
+  document.getElementById('tut-title').textContent = s.title;
+  document.getElementById('tut-desc').innerHTML    = s.desc;
+  document.getElementById('tut-hint').textContent  = s.hint;
+
+  const nextBtn = document.getElementById('tut-next');
+  nextBtn.textContent = s.nextLabel || 'Next →';
+  setNextEnabled(s.ready);
+
+  document.getElementById('tut-back').style.visibility = n === 0 ? 'hidden' : 'visible';
+
+  // Progress dots
+  const dotsEl = document.getElementById('tut-dots');
+  dotsEl.innerHTML = '';
+  STEPS.forEach((_, i) => {
+    const d = document.createElement('div');
+    d.className = 'dot' + (i === n ? ' active' : i < n ? ' done' : '');
+    dotsEl.appendChild(d);
+  });
+
+  initDC();
+  demoGoodLeft = Math.random() < 0.5;   // v3.1: re-roll the good side on every step entry
+  tutCleanup = s.setup() || null;
+}
+
+function setNextEnabled(on) {
+  const btn = document.getElementById('tut-next');
+  btn.disabled = !on;
+  btn.style.opacity = on ? '1' : '0.4';
+  STEPS[tutStep].ready = on;
+}
+
+function tutNext() {
+  if (!STEPS[tutStep].ready) return;
+  tutGoto(tutStep + 1);
+}
+
+function startTutorial() {
+  document.getElementById('tutorial-screen').style.display = 'flex';
+  tutGoto(0);
+}
+
+function replayTutorial() {
+  document.getElementById('landing-screen').style.display = 'none';
+  document.getElementById('tutorial-screen').style.display = 'flex';
+  // v3.5: every step has been visited once, so none of them gate Next any more.
+  if (practiceCompleted) STEPS.forEach(st => { st.ready = true; });
+  tutGoto(0);
+}
+
+function showLanding() {
+  if (tutCleanup) { tutCleanup(); tutCleanup = null; }
+  document.getElementById('tutorial-screen').style.display = 'none';
+  updateLandingState();
+  document.getElementById('landing-screen').style.display  = 'flex';
+}
+
+// ══════════════════════════════════════════════════════════════
+//  TUTORIAL STEP DEMOS
+// ══════════════════════════════════════════════════════════════
+
+// ── Shared helpers ────────────────────────────────────────────
+function dcClear() {
+  dctx.fillStyle = '#2B2B3A';
+  dctx.fillRect(0, 0, dc.width, dc.height);
+}
+
+function dcImg(img, cx, cy, sz) {
+  dctx.drawImage(img, cx - sz/2, cy - sz/2, sz, sz);
+}
+
+function dcText(text, x, y, color, font) {
+  dctx.font = font || '12px system-ui';
+  dctx.textAlign = 'center';
+  dctx.fillStyle = color || 'rgba(255,255,255,.45)';
+  dctx.fillText(text, x, y);
+}
+
+// ── STEP 1 — static two images ────────────────────────────────
+function step1() {
+  const DW = dc.width, DH = dc.height;
+  const sz   = Math.min(78, DW * 0.17);
+  const dist = Math.min(DW * 0.3, 120);
+  const cy   = DH / 2;
+
+  dcClear();
+
+  [0, 1].forEach(i => {
+    const cx = DW/2 + (i === 0 ? -dist : dist);
+    dcImg(demoImgs[i], cx, cy, sz);
+
+    dctx.font = 'bold 12px system-ui';
+    dctx.textAlign = 'center';
+    dctx.fillStyle = i === 0 ? '#90CAF9' : '#FFCC80';
+    dctx.fillText(i === 0 ? 'Image A' : 'Image B', cx, cy + sz/2 + 18);
+
+  });
+
+  // VS badge
+  dctx.font = 'bold 14px system-ui';
+  dctx.fillStyle = 'rgba(255,255,255,.2)';
+  dctx.textAlign = 'center';
+  dctx.fillText('VS', DW/2, cy + 5);
+
+  return () => {};
+}
+
+// ── STEP 2 — click-to-test probability ───────────────────────
+function step2() {
+  const DW = dc.width, DH = dc.height;
+  const sz   = Math.min(74, DW * 0.17);
+  const dist = Math.min(DW * 0.28, 110);
+  const cy   = DH / 2 - 4;
+
+  // v3.1: participants sample BOTH settings here, and which side is good is
+  // randomised — the earlier version pinned the good image to the left in every
+  // demo, teaching a spatial bias the practice then contradicts.
+  let setting = 0;                       // 0 = big gap, 1 = small gap
+  const SETTINGS = [
+    { hi: P_HI_EASY, lo: P_LO_EASY, name: 'Setting 1' },
+    { hi: P_HI_HARD, lo: P_LO_HARD, name: 'Setting 2' },
+  ];
+  let goodLeft = Math.random() < 0.5;    // re-rolled on every switch
+
+  const items = [
+    { cx: DW/2 - dist, cy, p: 0, col: '#90CAF9', label: '', hits: 0, total: 0 },
+    { cx: DW/2 + dist, cy, p: 0, col: '#FFCC80', label: '', hits: 0, total: 0 },
+  ];
+  function applySetting() {
+    const s = SETTINGS[setting];
+    const pL = goodLeft ? s.hi : s.lo, pR = goodLeft ? s.lo : s.hi;
+    items[0].p = pL; items[0].label = `${Math.round(pL*100)}%`; items[0].hits = 0; items[0].total = 0;
+    items[1].p = pR; items[1].label = `${Math.round(pR*100)}%`; items[1].hits = 0; items[1].total = 0;
+  }
+  applySetting();
+
+  let floats = [];
+  let hasInteracted = false;
+  let animId;
+
+  function draw() {
+    dcClear();
+
+    // Header: name the setting being sampled, and show the whole set
+    const s = SETTINGS[setting];
+    dctx.textAlign = 'center';
+    dctx.font = 'bold 15px system-ui';
+    dctx.fillStyle = '#e2b714';
+    dctx.fillText(`${s.name} of 2  —  ${Math.round(s.hi*100)}%  vs  ${Math.round(s.lo*100)}%`,
+                  DW/2, 26);
+    dctx.font = '12px system-ui';
+    dctx.fillStyle = 'rgba(255,255,255,.38)';
+    dctx.fillText(`the only other setting is ${Math.round(SETTINGS[1-setting].hi*100)}% vs ${Math.round(SETTINGS[1-setting].lo*100)}%`,
+                  DW/2, 46);
+
+    items.forEach((it, i) => {
+      dcImg(demoImgs[i], it.cx, it.cy, sz);
+
+      // Probability label
+      dctx.font = `bold ${Math.round(sz * .18)}px system-ui`;
+      dctx.textAlign = 'center';
+      dctx.fillStyle = it.col;
+      dctx.fillText(it.label, it.cx, it.cy + sz/2 + 19);
+
+      // Trial count
+      if (it.total > 0) {
+        dctx.font = '11px system-ui';
+        dctx.fillStyle = 'rgba(255,255,255,.4)';
+        dctx.fillText(`${it.hits} / ${it.total} rewarded`, it.cx, it.cy - sz/2 - 9);
+      }
+    });
+
+    // Floating +1 / 0
+    floats.forEach(f => {
+      f.y  += f.vy;
+      f.alpha -= 0.022;
+      if (f.alpha <= 0) return;
+      dctx.globalAlpha = f.alpha;
+      dctx.font = 'bold 22px system-ui';
+      dctx.fillStyle = f.col;
+      dctx.textAlign = 'center';
+      dctx.fillText(f.text, f.x, f.y);
+      dctx.globalAlpha = 1;
+    });
+    floats = floats.filter(f => f.alpha > 0);
+
+    animId = requestAnimationFrame(draw);
+  }
+
+  function onClick(e) {
+    const r  = dc.getBoundingClientRect();
+    const mx = (e.clientX - r.left) * (DW / r.width);
+    const my = (e.clientY - r.top)  * (DH / r.height);
+
+    items.forEach((it, i) => {
+      if (Math.abs(mx - it.cx) < sz/2 + 10 && Math.abs(my - it.cy) < sz/2 + 10) {
+        const rew = Math.random() < it.p;
+        it.total += 1;
+        if (rew) it.hits += 1;
+        logTutorial('demo_click', { step_index: tutStep, target_chosen: i + 1, base_p: it.p, reward: rew ? 1 : 0 });
+        floats.push({
+          x: it.cx, y: it.cy - sz/2 - 6, vy: -1, alpha: 1,
+          text: rew ? '+1' : '0',
+          col:  rew ? '#4caf50' : '#f44336',
+        });
+        if (!hasInteracted) { hasInteracted = true; setNextEnabled(true); }
+      }
+    });
+  }
+
+  // v3.1: a button to sample the OTHER setting, so the participant experiences
+  // the full probability set here rather than reading it as bullet points.
+  const swBtn = document.createElement('button');
+  swBtn.className = 'btn-sec';
+  swBtn.style.cssText = 'margin-top:10px;font-size:.95rem;';
+  const hintEl = document.getElementById('tut-hint');
+  function refreshBtn() {
+    const o = SETTINGS[1 - setting];
+    swBtn.textContent = `Try the other setting (${Math.round(o.hi*100)} vs ${Math.round(o.lo*100)}) →`;
+  }
+  swBtn.onclick = () => {
+    setting = 1 - setting;
+    goodLeft = Math.random() < 0.5;   // sides re-roll: the good image is not fixed
+    applySetting(); refreshBtn();
+    logTutorial('demo_switch_setting', {
+      step_index: tutStep, setting_index: setting,
+      p_hi: SETTINGS[setting].hi, good_side: goodLeft ? 'left' : 'right',
+    });
+  };
+  refreshBtn();
+  hintEl.innerHTML = '';
+  hintEl.appendChild(swBtn);
+
+  dc.addEventListener('click', onClick);
+  draw();
+
+  return () => {
+    cancelAnimationFrame(animId);
+    dc.removeEventListener('click', onClick);
+    hintEl.innerHTML = '';
+  };
+}
+
+// ── STEP 3 — energy gauge accumulation ───────────────────────
+function step3() {
+  const DW = dc.width, DH = dc.height;
+  const sz   = Math.min(82, DW * 0.18);
+  const dist = Math.min(DW * 0.30, 118);
+  const cy   = DH / 2 + 18;
+  const barW = sz + 28, barH = 16;
+
+  const CX = [DW/2 - dist, DW/2 + dist];
+  const CY = [cy, cy];
+
+  // n = number of consecutive unchosen trials for each image
+  const state = [
+    { n: 0, baseP: 0.50, col: '#42A5F5' },
+    { n: 0, baseP: 0.50, col: '#FFA726' },
+  ];
+
+  function getLevel(s) {
+    // P at switch after n unchosen trials: 1-(1-baseP)^(n+1)
+    return s.n === 0 ? s.baseP : 1 - Math.pow(1 - s.baseP, s.n + 1);
+  }
+
+  let floats = [];
+  let labels = [];   // status labels: "Reset!" / "Accumulating!"
+  let hasInteracted = false;
+  let animId;
+
+  function drawBar(i) {
+    const st  = state[i];
+    const lvl = getLevel(st);
+    const bx  = CX[i] - barW/2;
+    const by  = CY[i] - sz/2 - barH - 10;
+
+    // Track
+    dctx.fillStyle = 'rgba(255,255,255,.22)';
+    dctx.beginPath(); dctx.roundRect(bx, by, barW, barH, 4); dctx.fill();
+
+    // Fill (animated level)
+    dctx.fillStyle = st.col;
+    if (barW * lvl > 0) {
+      dctx.beginPath(); dctx.roundRect(bx, by, barW * lvl, barH, 4); dctx.fill();
+    }
+
+    // Baseline marker
+    dctx.strokeStyle = 'rgba(255,255,255,.9)';
+    dctx.lineWidth = 2.5;
+    const mx = bx + barW * st.baseP;
+    dctx.beginPath(); dctx.moveTo(mx, by - 4); dctx.lineTo(mx, by + barH + 4); dctx.stroke();
+
+    // % text
+    dctx.font = 'bold 13px system-ui';
+    dctx.textAlign = 'center';
+    dctx.fillStyle = 'rgba(255,255,255,.85)';
+    dctx.fillText(`${Math.round(lvl * 100)}%`, CX[i], by - 7);
+  }
+
+  function draw() {
+    dcClear();
+    [0, 1].forEach(i => {
+      drawBar(i);
+      dcImg(demoImgs[i], CX[i], CY[i], sz);
+      dctx.font = '11px system-ui';
+      dctx.textAlign = 'center';
+      dctx.fillStyle = 'rgba(255,255,255,.28)';
+      dctx.fillText('tap', CX[i], CY[i] + sz/2 + 15);
+    });
+
+    floats.forEach(f => {
+      f.y += f.vy; f.alpha -= 0.02;
+      if (f.alpha <= 0) return;
+      dctx.globalAlpha = f.alpha;
+      dctx.font = 'bold 20px system-ui';
+      dctx.fillStyle = f.col;
+      dctx.textAlign = 'center';
+      dctx.fillText(f.text, f.x, f.y);
+      dctx.globalAlpha = 1;
+    });
+    floats = floats.filter(f => f.alpha > 0);
+
+    // Status labels: "Reset!" / "Accumulating!"
+    labels.forEach(l => {
+      l.y += l.vy; l.alpha -= 0.016;
+      if (l.alpha <= 0) return;
+      dctx.globalAlpha = l.alpha;
+      dctx.font = `bold 13px system-ui`;
+      dctx.fillStyle = l.col;
+      dctx.textAlign = 'center';
+      dctx.fillText(l.text, l.x, l.y);
+      dctx.globalAlpha = 1;
+    });
+    labels = labels.filter(l => l.alpha > 0);
+
+    animId = requestAnimationFrame(draw);
+  }
+
+  function onClick(e) {
+    const r  = dc.getBoundingClientRect();
+    const mx = (e.clientX - r.left) * (DW / r.width);
+    const my = (e.clientY - r.top)  * (DH / r.height);
+
+    [0, 1].forEach(i => {
+      if (Math.abs(mx - CX[i]) < sz/2 + 10 && Math.abs(my - CY[i]) < sz/2 + 10) {
+        const lvl = getLevel(state[i]);
+        const rew = Math.random() < lvl;
+        logTutorial('gauge_demo_click', { step_index: tutStep, target_chosen: i + 1, gauge_level: +lvl.toFixed(3), reward: rew ? 1 : 0 });
+        floats.push({
+          x: CX[i], y: CY[i] - sz/2 - 8, vy: -1, alpha: 1,
+          text: rew ? '+1' : '0',
+          col:  rew ? '#4caf50' : '#f44336',
+        });
+        state[i].n = 0;        // chosen → reset
+        state[1-i].n++;        // unchosen → accumulate
+
+        // Status labels above each bar
+        const barTopY = CY[i] - sz/2 - barH - 10;
+        labels.push({
+          x: CX[i],    y: barTopY - 14, vy: -0.7, alpha: 1,
+          text: 'Reset!', col: '#ef9a9a',
+        });
+        labels.push({
+          x: CX[1-i], y: CY[1-i] - sz/2 - barH - 24, vy: -0.7, alpha: 1,
+          text: 'Accumulating!', col: '#81c784',
+        });
+
+        if (!hasInteracted) { hasInteracted = true; setNextEnabled(true); }
+      }
+    });
+  }
+
+  dc.addEventListener('click', onClick);
+  draw();
+
+  return () => {
+    cancelAnimationFrame(animId);
+    dc.removeEventListener('click', onClick);
+  };
+}
+
+// ── STEP 4 — cue animation loop ───────────────────────────────
+function step4() {
+  const DW = dc.width, DH = dc.height;
+  const cS = Math.min(76, DW * 0.17);
+  let frame = 0, animId;
+
+  function draw() {
+    frame++;
+    const ph = frame % 190;
+    dcClear();
+
+    if (ph < 65) {
+      // Fixation dot
+      dctx.fillStyle = '#fff';
+      dctx.beginPath(); dctx.arc(DW/2, DH/2, 5, 0, Math.PI*2); dctx.fill();
+      dcText('fixation dot', DW/2, DH/2 + 26, 'rgba(255,255,255,.3)');
+
+    } else if (ph < 130) {
+      // Cue
+      dctx.strokeStyle = '#BBDEFB'; dctx.lineWidth = 3;
+      dctx.strokeRect(DW/2 - cS/2, DH/2 - cS/2, cS, cS);
+      dctx.fillStyle = '#BBDEFB';
+      dctx.font = `bold ${Math.round(cS * .36)}px system-ui`;
+      dctx.textAlign = 'center'; dctx.textBaseline = 'middle';
+      dctx.fillText('?', DW/2, DH/2); dctx.textBaseline = 'alphabetic';
+      dcText('cue  — trial begins', DW/2, DH/2 + cS/2 + 22, 'rgba(255,255,255,.3)');
+    }
+    // 130–190: blank gap
+
+    animId = requestAnimationFrame(draw);
+  }
+
+  draw();
+  return () => cancelAnimationFrame(animId);
+}
+
+// ── STEP 5 — images appear, dot still showing ─────────────────
+function step5() {
+  const DW = dc.width, DH = dc.height;
+  const sz   = Math.min(66, DW * 0.15);
+  const dist = Math.min(DW * 0.27, 104);
+  const cS   = Math.min(60, DW * 0.14);
+  let frame = 0, animId;
+
+  function draw() {
+    frame++;
+    const ph = frame % 220;
+    dcClear();
+
+    if (ph < 40) {
+      dctx.fillStyle = '#fff';
+      dctx.beginPath(); dctx.arc(DW/2, DH/2, 5, 0, Math.PI*2); dctx.fill();
+
+    } else if (ph < 80) {
+      dctx.strokeStyle = '#BBDEFB'; dctx.lineWidth = 2.5;
+      dctx.strokeRect(DW/2 - cS/2, DH/2 - cS/2, cS, cS);
+      dctx.fillStyle = '#BBDEFB';
+      dctx.font = `bold ${Math.round(cS * .38)}px system-ui`;
+      dctx.textAlign = 'center'; dctx.textBaseline = 'middle';
+      dctx.fillText('?', DW/2, DH/2); dctx.textBaseline = 'alphabetic';
+
+    } else if (ph < 170) {
+      // Images appear + fixation dot still on
+      dcImg(demoImgs[0], DW/2 - dist, DH/2, sz);
+      dcImg(demoImgs[1], DW/2 + dist, DH/2, sz);
+      dctx.fillStyle = '#fff';
+      dctx.beginPath(); dctx.arc(DW/2, DH/2, 5, 0, Math.PI*2); dctx.fill();
+      dcText('dot still visible — wait…', DW/2, DH - 14, 'rgba(255,220,80,.5)');
+    }
+
+    animId = requestAnimationFrame(draw);
+  }
+
+  draw();
+  return () => cancelAnimationFrame(animId);
+}
+
+// ── STEP 6 — interactive mini-trial ───────────────────────────
+function step6() {
+  const DW = dc.width, DH = dc.height;
+  const sz   = Math.min(66, DW * 0.15);
+  const dist = Math.min(DW * 0.27, 104);
+  const cS   = Math.min(60, DW * 0.13);
+
+  let phase = 'fixation', phFrame = 0, chosen = -1, rewarded = false;
+  let animId;
+
+  function makeChoice(side) {
+    if (phase !== 'choice') return;
+    chosen   = side;
+    // v3.1: which side is good is randomised per demo run (demoGoodLeft),
+    // so the tutorial never trains a left/right bias the task then breaks.
+    rewarded = Math.random() < ((side === 0) === demoGoodLeft ? P_HI_EASY : P_LO_EASY);
+    step6Result = { chosen, rewarded };
+    phase = 'feedback'; phFrame = 0;
+    setNextEnabled(true);
+  }
+
+  function draw() {
+    phFrame++;
+    dcClear();
+
+    if (phase === 'fixation') {
+      dctx.fillStyle = '#fff';
+      dctx.beginPath(); dctx.arc(DW/2, DH/2, 5, 0, Math.PI*2); dctx.fill();
+      if (phFrame > 48) { phase = 'cue'; phFrame = 0; }
+
+    } else if (phase === 'cue') {
+      dctx.strokeStyle = '#BBDEFB'; dctx.lineWidth = 2.5;
+      dctx.strokeRect(DW/2 - cS/2, DH/2 - cS/2, cS, cS);
+      dctx.fillStyle = '#BBDEFB';
+      dctx.font = `bold ${Math.round(cS * .38)}px system-ui`;
+      dctx.textAlign = 'center'; dctx.textBaseline = 'middle';
+      dctx.fillText('?', DW/2, DH/2); dctx.textBaseline = 'alphabetic';
+      if (phFrame > 42) { phase = 'sample'; phFrame = 0; }
+
+    } else if (phase === 'sample') {
+      // Images + dot still present → wait
+      dcImg(demoImgs[0], DW/2 - dist, DH/2, sz);
+      dcImg(demoImgs[1], DW/2 + dist, DH/2, sz);
+      dctx.fillStyle = '#fff';
+      dctx.beginPath(); dctx.arc(DW/2, DH/2, 5, 0, Math.PI*2); dctx.fill();
+      if (phFrame > 42) { phase = 'choice'; phFrame = 0; }
+
+    } else if (phase === 'choice') {
+      // Dot gone — choose now!
+      dcImg(demoImgs[0], DW/2 - dist, DH/2, sz);
+      dcImg(demoImgs[1], DW/2 + dist, DH/2, sz);
+
+      // Subtle left/right zone tints — match image accent colors (A=cyan left, B=orange right)
+      dctx.fillStyle = IMG_COLORS[0]; dctx.fillRect(0,    0, DW/2, DH);
+      dctx.fillStyle = IMG_COLORS[1]; dctx.fillRect(DW/2, 0, DW/2, DH);
+      dctx.strokeStyle = 'rgba(255,255,255,.07)'; dctx.lineWidth = 1;
+      dctx.beginPath(); dctx.moveTo(DW/2, 0); dctx.lineTo(DW/2, DH); dctx.stroke();
+
+      // Countdown
+      const secs = Math.max(0, Math.ceil((300 - phFrame) / 60));
+      dcText(`${secs}s`, DW/2, 18, 'rgba(255,255,255,.3)', '11px system-ui');
+      dcText('← press arrow key →', DW/2, DH - 12, 'rgba(255,220,80,.5)', '11px system-ui');
+
+      if (phFrame > 300) { phase = 'fixation'; phFrame = 0; } // timeout → restart
+
+    } else if (phase === 'feedback') {
+      const chosenX  = chosen === 0 ? DW/2 - dist : DW/2 + dist;
+      const uchosenX = chosen === 0 ? DW/2 + dist : DW/2 - dist;
+
+      // Unchosen dimmed
+      dcImg(demoImgs[1 - chosen], uchosenX, DH/2, sz);
+      dctx.globalAlpha = 0.3;
+      dctx.fillStyle = '#2B2B3A';
+      dctx.fillRect(uchosenX - sz/2, DH/2 - sz/2, sz, sz);
+      dctx.globalAlpha = 1;
+
+      // Chosen highlighted
+      dcImg(demoImgs[chosen], chosenX, DH/2, sz);
+      dctx.strokeStyle = '#e2b714'; dctx.lineWidth = 3;
+      dctx.strokeRect(chosenX - sz/2 - 5, DH/2 - sz/2 - 5, sz + 10, sz + 10);
+
+      // Feedback number
+      const fS = 44;
+      dctx.font = `bold ${Math.round(fS * .9)}px system-ui`;
+      dctx.textAlign = 'center'; dctx.textBaseline = 'middle';
+      dctx.fillStyle = '#fff';
+      dctx.fillText(rewarded ? '+1' : '0', DW/2, DH/2);
+      dctx.textBaseline = 'alphabetic';
+    }
+
+    animId = requestAnimationFrame(draw);
+  }
+
+  function onKey(e) {
+    if (e.key === 'ArrowLeft')  makeChoice(0);
+    if (e.key === 'ArrowRight') makeChoice(1);
+    e.preventDefault();
+  }
+  function onClick(e) {
+    const r = dc.getBoundingClientRect();
+    makeChoice((e.clientX - r.left) * (DW / r.width) < DW/2 ? 0 : 1);
+  }
+
+  document.addEventListener('keydown', onKey);
+  dc.addEventListener('click', onClick);
+  draw();
+
+  return () => {
+    cancelAnimationFrame(animId);
+    document.removeEventListener('keydown', onKey);
+    dc.removeEventListener('click', onClick);
+  };
+}
+
+// ── STEP 7 — feedback explanation ────────────────────────────
+function step7() {
+  const DW = dc.width, DH = dc.height;
+  const sz   = Math.min(66, DW * 0.15);
+  const dist = Math.min(DW * 0.27, 104);
+  const res  = step6Result || { chosen: 0, rewarded: true };
+  const fS   = Math.min(46, DW * 0.1);
+
+  dcClear();
+
+  const chX  = res.chosen === 0 ? DW/2 - dist : DW/2 + dist;
+  const ucX  = res.chosen === 0 ? DW/2 + dist : DW/2 - dist;
+
+  // Unchosen — dimmed
+  dcImg(demoImgs[1 - res.chosen], ucX, DH/2, sz);
+  dctx.globalAlpha = 0.28;
+  dctx.fillStyle = '#2B2B3A';
+  dctx.fillRect(ucX - sz/2, DH/2 - sz/2, sz, sz);
+  dctx.globalAlpha = 1;
+
+  // Chosen — with gold border
+  dcImg(demoImgs[res.chosen], chX, DH/2, sz);
+  dctx.strokeStyle = '#e2b714'; dctx.lineWidth = 3;
+  dctx.strokeRect(chX - sz/2 - 5, DH/2 - sz/2 - 5, sz + 10, sz + 10);
+
+  // Feedback number
+  dctx.font = `bold ${Math.round(fS * .9)}px system-ui`;
+  dctx.textAlign = 'center'; dctx.textBaseline = 'middle';
+  dctx.fillStyle = '#fff';
+  dctx.fillText(res.rewarded ? '+1' : '0', DW/2, DH/2);
+  dctx.textBaseline = 'alphabetic';
+
+  // Legend
+  dcText('+1 = reward', DW/4, DH - 14, 'rgba(255,255,255,.4)', '12px system-ui');
+  dcText('0 = no reward', 3*DW/4, DH - 14, 'rgba(255,255,255,.4)', '12px system-ui');
+
+  return () => {};
+}
+
+// ── STEP: Block structure ─────────────────────────────────────
+function stepBlockInfo() {
+  const DW = dc.width, DH = dc.height;
+  let animId;   // v3.1: animated so the two kinds of change alternate on screen
+
+  const imgSz = Math.min(62, DW * 0.13);
+  const barH  = 13, barW = imgSz + 16;
+
+  // Content height: label + imgA + barA + gap + imgB + barB = approx
+  const labelH  = 22;
+  const spacing = 14;   // gap between images
+  const rowH    = imgSz + barH + 18 + 10;  // image + bar + % + padding
+  const totalContentH = labelH + rowH * 2 + spacing;
+
+  // Vertically centre the whole block of content
+  const topY = (DH - totalContentH) / 2;
+
+  const labelY = topY + 14;
+  const rowAcy = labelY + labelH + imgSz/2;
+  const barAy  = rowAcy + imgSz/2 + 7;
+  const pctAy  = barAy + barH + 13;
+  const rowBcy = pctAy + spacing + imgSz/2;
+  const barBy  = rowBcy + imgSz/2 + 7;
+  const pctBy  = barBy + barH + 13;
+
+  // v3: three columns — the TWO kinds of change that actually occur
+  const spread = Math.min(DW * 0.33, 250);
+  const c1X = DW/2 - spread;
+  const c2X = DW/2;
+  const c3X = DW/2 + spread;
+
+  function drawCol(cx, label, pA, pB, labelCol) {
+    dctx.font = 'bold 15px system-ui'; dctx.textAlign = 'center';
+    dctx.fillStyle = labelCol;
+    dctx.fillText(label, cx, labelY);
+
+    // Image A
+    dcImg(demoImgs[0], cx, rowAcy, imgSz);
+    const bxA = cx - barW/2;
+    dctx.fillStyle = 'rgba(255,255,255,.2)';
+    dctx.beginPath(); dctx.roundRect(bxA, barAy, barW, barH, 3); dctx.fill();
+    dctx.fillStyle = 'rgba(0,188,212,.9)';
+    if (pA > 0) { dctx.beginPath(); dctx.roundRect(bxA, barAy, barW * pA, barH, 3); dctx.fill(); }
+    dctx.font = 'bold 13px system-ui'; dctx.fillStyle = 'rgba(255,255,255,.85)';
+    dctx.fillText(`${Math.round(pA*100)}%`, cx, pctAy);
+
+    // Image B
+    dcImg(demoImgs[1], cx, rowBcy, imgSz);
+    const bxB = cx - barW/2;
+    dctx.fillStyle = 'rgba(255,255,255,.2)';
+    dctx.beginPath(); dctx.roundRect(bxB, barBy, barW, barH, 3); dctx.fill();
+    dctx.fillStyle = 'rgba(255,152,0,.9)';
+    if (pB > 0) { dctx.beginPath(); dctx.roundRect(bxB, barBy, barW * pB, barH, 3); dctx.fill(); }
+    dctx.font = 'bold 13px system-ui'; dctx.fillStyle = 'rgba(255,255,255,.85)';
+    dctx.fillText(`${Math.round(pB*100)}%`, cx, pctBy);
+  }
+
+  // v3.1: BEFORE -> AFTER, one change at a time. v3.0 drew three columns in a
+  // chain ("Now => swap => gap shrinks"), which reads as a sequence of events
+  // rather than two alternative outcomes. Now it is a single before/after pair,
+  // and which of the two change types is shown alternates every 2.6 s with an
+  // explicit label, so only one idea is on screen at once.
+  // v3.2: cycle through EVERY state the pair can change into, from the same
+  // "before". The arrow is labelled only "change" — naming the kinds of change
+  // was more confusing than the picture itself.
+  const AFTERS = CFG.pairP
+    .filter(([a, b]) => !(a === P_HI_EASY && b === P_LO_EASY))
+    .map(([a, b]) => ({ pA: a, pB: b }));
+
+  function draw() {
+    dcClear();
+    const v = AFTERS[Math.floor(Date.now() / 2200) % AFTERS.length];
+
+    drawCol(c1X, 'before', P_HI_EASY, P_LO_EASY, 'rgba(255,255,255,.55)');
+    drawCol(c3X, 'after',  v.pA,      v.pB,      '#e2b714');
+
+    const arrowY = (rowAcy + rowBcy) / 2 + 4;
+    dctx.textAlign = 'center';
+    // v3.5: the rate sits above the arrow so the picture carries it too
+    dctx.font = 'bold 13px system-ui';
+    dctx.fillStyle = 'rgba(255,255,255,.55)';
+    dctx.fillText(`every ~${MEAN_BLOCK_LEN} trials`, c2X, arrowY - 26);
+    dctx.font = 'bold 34px system-ui';
+    dctx.fillStyle = '#e2b714';
+    dctx.fillText('⇒', c2X, arrowY);
+    dctx.font = 'bold 13px system-ui';
+    dctx.fillText('change', c2X, arrowY + 26);
+
+    animId = requestAnimationFrame(draw);
+  }
+
+  draw();
+  return () => cancelAnimationFrame(animId);
+}
+
+// ── STEP (v3) — "A miss is normal": the anti-WSLS demo ────────
+// Targets the one large, cleanly separated human/animal difference: humans shift
+// away from the better option after a single unrewarded trial far more than the
+// overtrained animals do (lose-win shift asymmetry +0.318 vs +0.058, ranges
+// disjoint). Deals 20 outcomes from the HARD pair's better option so the true
+// miss rate (~1 in 3) and the length of miss runs are seen, not inferred.
+let missDemoRuns = 0;
+function stepMissIsNormal() {
+  const DW = dc.width, DH = dc.height;
+  const N = 20;
+  let outcomes = [];
+  let revealed = 0;
+  let animId = null, dealtAt = 0;
+  // v3.4: one pick per PICK_MS. Slow enough to read as a deliberate choice, so
+  // the target blink and the square appearing land as a single event.
+  const PICK_MS  = 380;
+  const BLINK_MS = 180;
+
+  const btn = document.createElement('button');
+  btn.className = 'btn-sec';
+  btn.style.cssText = 'margin-top:10px;font-size:.95rem;';
+  btn.textContent = missDemoRuns ? 'Deal 20 more picks' : 'Deal 20 picks →';
+  const hintEl = document.getElementById('tut-hint');
+
+  function deal() {
+    outcomes = Array.from({ length: N }, () => Math.random() < P_HI_HARD);
+    revealed = 0; dealtAt = performance.now();
+    missDemoRuns++;
+    btn.textContent = 'Deal 20 more picks';
+    const misses = outcomes.filter(o => !o).length;
+    let run = 0, longest = 0;
+    outcomes.forEach(o => { run = o ? 0 : run + 1; longest = Math.max(longest, run); });
+    logTutorial('miss_demo_deal', {
+      step_index: tutStep, base_p: P_HI_HARD, n: N,
+      misses, longest_miss_run: longest, run_index: missDemoRuns,
+    });
+    setNextEnabled(true);
+  }
+
+  // v3.3: show the actual choice situation — BOTH targets, with the 66% one
+  // selected on every pick — and the +1 / 0 outcomes beneath the chosen image,
+  // so the strip reads as "this is what picking the good one looks like".
+  const CHOSEN = 0;   // index of the better (P_HI_HARD) image
+
+  function draw() {
+    // v3.3: reveal on wall-clock, not frame count — a 120 Hz display revealed
+    // twice as fast, and a backgrounded tab (rAF throttled to ~1 fps) stalled.
+    const elapsed = performance.now() - dealtAt;
+    revealed = outcomes.length
+      ? Math.min(outcomes.length, Math.floor(elapsed / PICK_MS))
+      : 0;
+    // v3.4: blink the chosen target at the instant each new square lands, so the
+    // page reads "pick -> outcome, pick -> outcome" rather than a strip that
+    // fills itself in. Decays 1 -> 0 over BLINK_MS after every pick.
+    const phase = elapsed % PICK_MS;
+    const blink = (outcomes.length && revealed > 0 && revealed < outcomes.length
+                   && phase < BLINK_MS)
+      ? 1 - phase / BLINK_MS
+      : 0;
+    dcClear();
+
+    const imgSz = Math.max(40, Math.min(58, DH * 0.20));
+    const dist  = Math.min(DW * 0.20, 95);
+
+    // v3.4: centre the whole block (targets + labels + squares + summary)
+    // vertically, instead of pinning the targets near the top.
+    const cell    = Math.min(30, (DW - 60) / N);
+    const labelH  = 40;   // "66%" + "picked every time"
+    const gapH    = 18;   // targets -> squares
+    const summH   = 24;
+    const contentH = imgSz + labelH + gapH + cell + summH;
+    const topY  = Math.max(6, (DH - contentH) / 2);
+    const imgCy = topY + imgSz / 2;
+
+    // ── the two targets, with the better one held selected ──
+    for (let i = 0; i < 2; i++) {
+      const cx   = DW / 2 + (i === CHOSEN ? -dist : dist);
+      const isCh = i === CHOSEN;
+
+      if (isCh) {
+        const pad = 6 + 3 * blink;
+        dctx.strokeStyle = `rgba(226,183,20,${(0.75 + 0.25 * blink).toFixed(3)})`;
+        dctx.lineWidth = 3 + 2 * blink;
+        dctx.beginPath();
+        dctx.roundRect(cx - imgSz/2 - pad, imgCy - imgSz/2 - pad,
+                       imgSz + pad*2, imgSz + pad*2, 12);
+        dctx.stroke();
+      }
+      dctx.globalAlpha = isCh ? 1 : 0.38;
+      dcImg(demoImgs[i], cx, imgCy, imgSz);
+      if (isCh && blink > 0) {   // brief flash over the chosen image
+        dctx.globalAlpha = 0.28 * blink;
+        dctx.fillStyle = '#fff';
+        dctx.beginPath();
+        dctx.roundRect(cx - imgSz/2, imgCy - imgSz/2, imgSz, imgSz, imgSz * 0.12);
+        dctx.fill();
+      }
+      dctx.globalAlpha = 1;
+
+      dctx.font = 'bold 13px system-ui'; dctx.textAlign = 'center';
+      dctx.fillStyle = isCh ? '#e2b714' : 'rgba(255,255,255,.32)';
+      dctx.fillText(`${Math.round((isCh ? P_HI_HARD : P_LO_HARD) * 100)}%`,
+                    cx, imgCy + imgSz/2 + 21);
+      if (isCh) {
+        dctx.font = '11px system-ui';
+        dctx.fillStyle = 'rgba(226,183,20,.7)';
+        dctx.fillText('picked every time', cx, imgCy + imgSz/2 + 37);
+      }
+    }
+
+    // ── outcomes of those picks, beneath ──
+    const gap  = Math.max(2, cell * 0.16);
+    const totalW = N * cell + (N - 1) * gap;
+    const x0 = (DW - totalW) / 2;
+    const cy = topY + imgSz + labelH + gapH + cell/2;
+
+    for (let i = 0; i < N; i++) {
+      const x = x0 + i * (cell + gap);
+      const shown = i < revealed;
+      const isNewest = shown && i === revealed - 1 && blink > 0;
+      const g = isNewest ? cell * 0.18 * blink : 0;   // newest square pops in
+      dctx.fillStyle = !shown ? 'rgba(255,255,255,.07)'
+                             : outcomes[i] ? 'rgba(76,175,80,.85)' : 'rgba(244,67,54,.85)';
+      dctx.beginPath();
+      dctx.roundRect(x - g/2, cy - cell/2 - g/2, cell + g, cell + g, 4);
+      dctx.fill();
+      if (shown) {
+        dctx.font = `bold ${Math.round(cell * 0.46)}px system-ui`;
+        dctx.textAlign = 'center'; dctx.textBaseline = 'middle';
+        dctx.fillStyle = '#fff';
+        dctx.fillText(outcomes[i] ? '+1' : '0', x + cell/2, cy);
+        dctx.textBaseline = 'alphabetic';
+      }
+    }
+
+    if (revealed === N && outcomes.length) {
+      const misses = outcomes.filter(o => !o).length;
+      let run = 0, longest = 0;
+      outcomes.forEach(o => { run = o ? 0 : run + 1; longest = Math.max(longest, run); });
+      dctx.font = `bold ${Math.max(10, Math.min(14, DW / 58)).toFixed(0)}px system-ui`;
+      dctx.textAlign = 'center';
+      dctx.fillStyle = '#ef9a9a';
+      dctx.fillText(`${misses} misses out of ${N} — longest run of misses: ${longest}`,
+                    DW/2, cy + cell/2 + 20);
+    }
+
+    animId = requestAnimationFrame(draw);
+  }
+
+  btn.onclick = deal;
+  hintEl.innerHTML = '';
+  hintEl.appendChild(btn);
+  deal();    // v3.1: deal immediately — the point should land on arrival, not
+             // require finding a button in the footer first
+  draw();
+
+  return () => {
+    if (animId) cancelAnimationFrame(animId);
+    hintEl.innerHTML = '';
+  };
+}
+
+// ── STEP: Bonus ───────────────────────────────────────────────
+function stepBonus() {
+  const DW = dc.width, DH = dc.height;
+  dcClear();
+
+  const cy = DH/2;
+  // Score box
+  const bX = DW/2 - 130, bY = cy - 34, bW2 = 100, bH2 = 52;
+  dctx.fillStyle = 'rgba(226,183,20,.12)';
+  dctx.strokeStyle = 'rgba(226,183,20,.4)'; dctx.lineWidth = 2;
+  dctx.beginPath(); dctx.roundRect(bX, bY, bW2, bH2, 8); dctx.fill(); dctx.stroke();
+  dctx.font = 'bold 11px system-ui'; dctx.textAlign = 'center'; dctx.fillStyle = 'rgba(255,255,255,.5)';
+  dctx.fillText('Your Score', bX + bW2/2, bY + 16);
+  dctx.font = 'bold 22px system-ui'; dctx.fillStyle = '#e2b714';
+  dctx.fillText('+1  +1  +1', bX + bW2/2, bY + 38);
+
+  // Arrow
+  dctx.font = 'bold 22px system-ui'; dctx.fillStyle = '#e2b714';
+  dctx.fillText('→', DW/2 - 8, cy + 8);
+
+  // Bonus box
+  const b2X = DW/2 + 24;
+  dctx.fillStyle = 'rgba(76,175,80,.12)';
+  dctx.strokeStyle = 'rgba(76,175,80,.4)'; dctx.lineWidth = 2;
+  dctx.beginPath(); dctx.roundRect(b2X, bY, bW2, bH2, 8); dctx.fill(); dctx.stroke();
+  dctx.font = 'bold 11px system-ui'; dctx.fillStyle = 'rgba(255,255,255,.5)';
+  dctx.fillText('Bonus Pay', b2X + bW2/2, bY + 16);
+  dctx.font = 'bold 24px system-ui'; dctx.fillStyle = '#81c784';
+  dctx.fillText('💰', b2X + bW2/2, bY + 40);
+
+  dcText('Higher score = higher bonus payment', DW/2, DH - 12, 'rgba(255,255,255,.35)', '11px system-ui');
+
+  return () => {};
+}
+
+// ── STEP: Collapsed trial flow (fixation → sample → choice → feedback, loops) ──
+function stepTrialFlow() {
+  const DW = dc.width, DH = dc.height;
+  const sz   = Math.min(66, DW * 0.15);
+  const dist = Math.min(DW * 0.27, 104);
+
+  let phase = 'fixation', phFrame = 0, chosen = -1, rewarded = false;
+  let animId;
+
+  function makeChoice(side) {
+    if (phase !== 'choice') return;
+    chosen   = side;
+    // v3.1: which side is good is randomised per demo run (demoGoodLeft),
+    // so the tutorial never trains a left/right bias the task then breaks.
+    rewarded = Math.random() < ((side === 0) === demoGoodLeft ? P_HI_EASY : P_LO_EASY);
+    step6Result = { chosen, rewarded };
+    logTutorial('trialflow_demo_click', { step_index: tutStep, target_chosen: side + 1, reward: rewarded ? 1 : 0 });
+    phase = 'feedback'; phFrame = 0;
+    setNextEnabled(true);
+  }
+
+  function draw() {
+    phFrame++;
+    dcClear();
+
+    if (phase === 'fixation') {
+      dcText('① fixation dot', DW/2, 18, 'rgba(255,255,255,.32)', '11px system-ui');
+      dctx.fillStyle = '#fff';
+      dctx.beginPath(); dctx.arc(DW/2, DH/2, 6, 0, Math.PI*2); dctx.fill();
+      if (phFrame > 48) { phase = 'sample'; phFrame = 0; }
+
+    } else if (phase === 'sample') {
+      dcText('② images appear — dot still on, do not respond yet', DW/2, 18, 'rgba(255,220,80,.55)', '11px system-ui');
+      dcImg(demoImgs[0], DW/2 - dist, DH/2, sz);
+      dcImg(demoImgs[1], DW/2 + dist, DH/2, sz);
+      dctx.fillStyle = '#fff';
+      dctx.beginPath(); dctx.arc(DW/2, DH/2, 6, 0, Math.PI*2); dctx.fill();
+      if (phFrame > 42) { phase = 'choice'; phFrame = 0; }
+
+    } else if (phase === 'choice') {
+      dcText('③ dot gone — press ← or → to choose', DW/2, 18, 'rgba(144,249,144,.7)', '11px system-ui');
+      dcImg(demoImgs[0], DW/2 - dist, DH/2, sz);
+      dcImg(demoImgs[1], DW/2 + dist, DH/2, sz);
+      dctx.fillStyle = IMG_COLORS[0]; dctx.fillRect(0,    0, DW/2, DH);
+      dctx.fillStyle = IMG_COLORS[1]; dctx.fillRect(DW/2, 0, DW/2, DH);
+      dctx.strokeStyle = 'rgba(255,255,255,.07)'; dctx.lineWidth = 1;
+      dctx.beginPath(); dctx.moveTo(DW/2,0); dctx.lineTo(DW/2,DH); dctx.stroke();
+      const secs = Math.max(0, Math.ceil((300 - phFrame) / 60));
+      dcText(`${secs}s`, DW/2, DH - 26, 'rgba(255,255,255,.28)', '11px system-ui');
+      dcText('← Left       Right →', DW/2, DH - 10, 'rgba(255,220,80,.65)', 'bold 12px system-ui');
+      if (phFrame > 300) { phase = 'fixation'; phFrame = 0; }
+
+    } else if (phase === 'feedback') {
+      dcText('④ result', DW/2, 18, 'rgba(255,255,255,.32)', '11px system-ui');
+      const chX = chosen === 0 ? DW/2 - dist : DW/2 + dist;
+      const ucX = chosen === 0 ? DW/2 + dist : DW/2 - dist;
+      dcImg(demoImgs[1-chosen], ucX, DH/2, sz);
+      dctx.globalAlpha = 0.3; dctx.fillStyle = '#2B2B3A';
+      dctx.fillRect(ucX - sz/2, DH/2 - sz/2, sz, sz); dctx.globalAlpha = 1;
+      dcImg(demoImgs[chosen], chX, DH/2, sz);
+      dctx.strokeStyle = '#e2b714'; dctx.lineWidth = 3;
+      dctx.strokeRect(chX - sz/2 - 5, DH/2 - sz/2 - 5, sz+10, sz+10);
+      dctx.font = 'bold 36px system-ui'; dctx.textAlign = 'center';
+      dctx.textBaseline = 'middle'; dctx.fillStyle = '#fff';
+      dctx.fillText(rewarded ? '+1' : '0', DW/2, DH/2); dctx.textBaseline = 'alphabetic';
+      dcText('Try again ↺', DW/2, DH - 10, 'rgba(255,255,255,.28)', '11px system-ui');
+      if (phFrame > 90) { phase = 'fixation'; phFrame = 0; chosen = -1; } // auto-loop
+    }
+    animId = requestAnimationFrame(draw);
+  }
+
+  function onKey(e) {
+    if (e.key === 'ArrowLeft')  makeChoice(0);
+    if (e.key === 'ArrowRight') makeChoice(1);
+    e.preventDefault();
+  }
+  function onClick(e) {
+    const r = dc.getBoundingClientRect();
+    makeChoice((e.clientX - r.left) * (DW / r.width) < DW/2 ? 0 : 1);
+  }
+
+  document.addEventListener('keydown', onKey);
+  dc.addEventListener('click', onClick);
+  draw();
+
+  return () => {
+    cancelAnimationFrame(animId);
+    document.removeEventListener('keydown', onKey);
+    dc.removeEventListener('click', onClick);
+  };
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  UTILS
+// ═══════════════════════════════════════════════════════════════
+function generateSet(N1, N2) {
+  const levels = [];
+  for (let n = 0; n < N2; n++) {
+    let perm, ok;
+    do {
+      perm = fysShuffle([...Array(N1).keys()]);
+      ok = n === 0 || perm[0] !== levels[levels.length - 1];
+    } while (!ok);
+    levels.push(...perm);
+  }
+  return levels;
+}
+function fysShuffle(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+function randInt(lo, hi) { return Math.floor(Math.random() * (hi - lo + 1)) + lo; }
+function sleep(ms)       { return new Promise(r => setTimeout(r, ms)); }
+// v3.6: a sleep that can be cut short. Used only on the practice path so that
+// "Back to menu" takes effect at once instead of waiting out the current
+// fixation / feedback / ITI. shouldAbort == null delegates to plain sleep, so
+// the main task's timing is untouched.
+async function sleepUntil(ms, shouldAbort) {
+  if (!shouldAbort) return sleep(ms);
+  const end = performance.now() + ms;
+  while (performance.now() < end) {
+    if (shouldAbort()) return;
+    await sleep(Math.min(40, Math.max(1, end - performance.now())));
+  }
+}
+
+function updateHUD(blockNum, totalBlocks, trialNum, totalTrials) {
+  if (totalBlocks > 0) {
+    document.getElementById('hud-block-item').style.display = 'none';
+    document.getElementById('hud-prog-wrap').style.display  = 'flex';
+    document.getElementById('hud-prog-fill').style.width    =
+      Math.round(blockNum / totalBlocks * 100) + '%';
+  } else {
+    document.getElementById('hud-block-item').style.display = '';
+    document.getElementById('hud-prog-wrap').style.display  = 'none';
+    document.getElementById('hud-block').textContent = 'Practice';
+  }
+  document.getElementById('hud-trial').textContent = `${trialNum} / ${totalTrials}`;
+  document.getElementById('hud-score').textContent  = totalScore;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  TASK CANVAS DRAWING
+// ═══════════════════════════════════════════════════════════════
+function clearCanvas() {
+  ctx.fillStyle = '#2B2B3A';
+  ctx.fillRect(0, 0, W, H);
+}
+function drawFixation() {
+  ctx.fillStyle = '#fff';
+  ctx.beginPath(); ctx.arc(W/2, H/2, 6, 0, Math.PI*2); ctx.fill();
+}
+function drawFreeCue() {
+  const s = CFG.cueSize;
+  ctx.strokeStyle = '#BBDEFB'; ctx.lineWidth = 3;
+  ctx.strokeRect(W/2 - s/2, H/2 - s/2, s, s);
+  ctx.fillStyle = '#BBDEFB';
+  ctx.font = 'bold 36px system-ui';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText('?', W/2, H/2); ctx.textBaseline = 'alphabetic';
+}
+function drawImages(offsets, highlight) {
+  const s = CFG.imageSize;
+  for (let i = 0; i < 2; i++) {
+    const px = W/2 + offsets[i].x - s/2;
+    const py = H/2 + offsets[i].y - s/2;
+    if (highlight === i) {
+      ctx.strokeStyle = '#e2b714'; ctx.lineWidth = 4;
+      ctx.beginPath(); ctx.roundRect(px - 5, py - 5, s + 10, s + 10, 16); ctx.stroke();
+    }
+    ctx.drawImage(taskImgs[i], px, py, s, s);
+  }
+}
+// Image A accent: rgb(0,188,212) cyan/teal  — Image B accent: rgb(255,152,0) orange/amber
+const IMG_COLORS = ['rgba(0,188,212,.07)', 'rgba(255,152,0,.07)'];
+
+function drawChoiceZones(offsets) {
+  // Determine which image index is on the left vs right
+  const leftIdx  = offsets[0].x < 0 ? 0 : 1;
+  const rightIdx = 1 - leftIdx;
+  ctx.fillStyle = IMG_COLORS[leftIdx];  ctx.fillRect(0,   0, W/2, H);
+  ctx.fillStyle = IMG_COLORS[rightIdx]; ctx.fillRect(W/2, 0, W/2, H);
+  ctx.strokeStyle = 'rgba(255,255,255,.07)'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(W/2, 0); ctx.lineTo(W/2, H); ctx.stroke();
+}
+function drawFeedback(rewarded) {
+  ctx.font = 'bold 72px system-ui';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = '#ffffff';
+  ctx.fillText(rewarded ? '+1' : '0', W/2, H/2);
+  ctx.textBaseline = 'alphabetic';
+}
+function drawKeyHints(offsets) {
+  ctx.font = '600 14px system-ui'; ctx.textBaseline = 'middle';
+  for (let i = 0; i < 2; i++) {
+    ctx.fillStyle = 'rgba(187,222,251,.6)';
+    ctx.textAlign = 'center';
+    ctx.fillText(offsets[i].x < 0 ? '← Left' : 'Right →',
+      W/2 + offsets[i].x, H/2 + CFG.imageSize/2 + 22);
+  }
+  ctx.textBaseline = 'alphabetic';
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  PRACTICE GAUGE
+// ═══════════════════════════════════════════════════════════════
+let gaugeState = [{ n: 0 }, { n: 0 }];   // unchosen-trial counts per image
+
+function getGaugeLevel(baseP, n) {
+  return n === 0 ? baseP : 1 - Math.pow(1 - baseP, n + 1);
+}
+
+function drawGauges(offsets) {
+  const bW = CFG.imageSize + 20, bH = 14;
+  const basePs  = [currentP1, currentP2];
+  const imgCols = ['rgba(0,188,212,.9)', 'rgba(255,152,0,.9)'];
+
+  for (let i = 0; i < 2; i++) {
+    const cx  = W/2 + offsets[i].x;
+    const by  = H/2 - CFG.imageSize/2 - bH - 16;
+    const bx  = cx - bW/2;
+    const lvl = getGaugeLevel(basePs[i], gaugeState[i].n);
+
+    // Track
+    ctx.fillStyle = 'rgba(255,255,255,.22)';
+    ctx.beginPath(); ctx.roundRect(bx, by, bW, bH, 4); ctx.fill();
+    // Fill
+    ctx.fillStyle = imgCols[i];
+    if (bW * lvl > 0) { ctx.beginPath(); ctx.roundRect(bx, by, bW * lvl, bH, 4); ctx.fill(); }
+    // Baseline marker
+    ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.lineWidth = 2;
+    const mx = bx + bW * basePs[i];
+    ctx.beginPath(); ctx.moveTo(mx, by - 3); ctx.lineTo(mx, by + bH + 3); ctx.stroke();
+    // % label
+    ctx.font = 'bold 13px system-ui'; ctx.textAlign = 'center';
+    ctx.fillStyle = 'rgba(255,255,255,.85)';
+    ctx.fillText(`${Math.round(lvl * 100)}%`, cx, by - 6);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  CHOICE
+// ═══════════════════════════════════════════════════════════════
+// v3.6: `shouldAbort` lets the practice exit interrupt the wait immediately.
+// The main task passes nothing, so its behaviour is byte-for-byte unchanged.
+async function waitForChoice(offsets, shouldAbort = null) {
+  keyPressed = null;
+  const start = performance.now();
+  while (performance.now() - start < CFG.timing.choiceTimeout) {
+    if (shouldAbort && shouldAbort()) return { chosen: -1, rt: -1, aborted: true };
+    if (keyPressed) {
+      const dir = keyPressed; keyPressed = null;
+      for (let i = 0; i < 2; i++) {
+        const isL = offsets[i].x < 0, isR = offsets[i].x > 0;
+        if ((dir === 'left' && isL) || (dir === 'right' && isR))
+          return { chosen: i, rt: performance.now() - start };
+      }
+    }
+    await sleep(16);
+  }
+  return { chosen: -1, rt: -1 };
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  REWARD MODEL
+// ═══════════════════════════════════════════════════════════════
+function calcReward(chosenIdx) {
+  const initP = chosenIdx === 0 ? currentP1 : currentP2;
+  let P, seq;
+  if (lastChoice === null) {
+    // v3.7 FIX: count this first pick toward the run. Previously choiceSequence
+    // was left at 0 here, so the block's FIRST switch used exponent
+    // (0+1) instead of (1+1) — e.g. 0.33 instead of 0.551 on a 66/33 block —
+    // and the practice gauge (which does count it) disagreed with the reward
+    // actually delivered. Only the first run of each block was affected;
+    // everything after the first switch was already correct.
+    P = initP; seq = 1; choiceSequence = 1;
+  } else if (chosenIdx === lastChoice) {
+    choiceSequence++; P = initP; seq = choiceSequence;
+  } else {
+    P = 1 - Math.pow(1 - initP, choiceSequence + 1);
+    choiceSequence = 1; seq = 1;
+  }
+  lastChoice = chosenIdx;
+  return { rewarded: Math.random() < P, P_reward: P, sequence: seq };
+}
+
+// ── PRACTICE TIMEOUT HINT (v3.2) ─────────────────────────────
+// In PRACTICE ONLY, a 5 s timeout no longer discards the trial. The better
+// target is marked and the trial waits until a choice is made, so practice
+// always delivers its full complement of trials and a distracted participant
+// still learns which image was correct. The main task is untouched: there,
+// a timeout is still an invalid trial (error 5).
+function drawPracticeHint(offsets, betterIdx, remainMs) {
+  const o = offsets[betterIdx];
+  const s = CFG.imageSize;
+  const px = W/2 + o.x, py = H/2 + o.y;
+  const pulse = 0.55 + 0.45 * Math.sin(performance.now() / 260);
+
+  ctx.save();
+  ctx.strokeStyle = `rgba(226,183,20,${pulse.toFixed(3)})`;
+  ctx.lineWidth = 4;
+  ctx.setLineDash([9, 6]);
+  ctx.beginPath();
+  ctx.roundRect(px - s/2 - 8, py - s/2 - 8, s + 16, s + 16, 16);
+  ctx.stroke();
+  ctx.restore();
+
+  ctx.font = 'bold 15px system-ui';
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#e2b714';
+  ctx.fillText('this one has the higher chance', px, py + s/2 + 46);
+  ctx.font = '13px system-ui';
+  ctx.fillStyle = 'rgba(255,255,255,.55)';
+  ctx.fillText(o.x < 0 ? 'press ←' : 'press →', px, py + s/2 + 66);
+
+  if (remainMs != null && remainMs < Infinity) {
+    ctx.font = '12px system-ui';
+    ctx.fillStyle = 'rgba(255,255,255,.35)';
+    ctx.fillText(`continuing automatically in ~${Math.max(0, Math.round(remainMs / 1000))} s`,
+                 W/2, H/2 + s/2 + 96);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  SINGLE TRIAL
+// ═══════════════════════════════════════════════════════════════
+// Field names below are aligned with the lab's existing valdec CSV schema
+// (data_raw/behavior/sub-NN_behavior.csv) wherever a direct equivalent exists,
+// so online and in-lab data can be concatenated with minimal reshaping:
+//   block, trial, blocklength, correct, error, reward, target_chosen, P1, P2, setP, rt_ms
+// Fields with no lab equivalent (sequence, P_reward, timestamp, phase, task_type,
+// practiceAttempt) are online-only additions documented separately.
+// NOT included (lab-only, not meaningful for the online canvas task): session_id,
+// session_name, eeg_session, meg_session, stimloc, chosen_catid, initP (== P1 in lab data).
+async function runTrial(blockNum, trialIdx, totalTrials, showHints = false, showGauge = false, phase = 'main') {
+  const isMain = phase === 'main';
+  const record = {
+    participant_id: prolificID,
+    task_type: isMain ? 'valdec_online' : 'valdec_online_practice',
+    phase,
+    practiceAttempt: isMain ? null : practiceAttempt,
+    block: blockNum, trial: trialIdx + 1, blocklength: totalTrials,
+    correct: 0, error: 5, target_chosen: -1, reward: 0,
+    P_reward: 0, sequence: 0, rt_ms: -1, hint_shown: 0,   // 0 none | 1 hinted, answered | 2 hinted, auto-accepted
+    P1: currentP1, P2: currentP2,
+    setP: isMain ? (setPIndex[blockNum - 1] ?? 0) + 1 : null,
+    timestamp: Date.now(),
+  };
+
+  const offsets = [{ x: -CFG.targetDistance, y: 0 }, { x: CFG.targetDistance, y: 0 }];
+  if (Math.random() > 0.5) offsets.reverse();
+
+  // v3.6: leaving practice takes effect immediately, not at the next trial
+  // boundary. `bail()` is checked after every wait; an aborted trial returns
+  // WITHOUT pushing its record, so partial trials are discarded rather than
+  // saved as no-response rows. Main task: bail() is always false.
+  const bail = () => !isMain && practiceAbort;
+  const dropped = () => ({ ...record, valid: false, aborted: true });
+
+  clearCanvas(); drawFixation();
+  await sleepUntil(CFG.timing.fixationInit, isMain ? null : bail);
+  if (bail()) return dropped();
+
+  clearCanvas(); drawImages(offsets, null); drawFixation();
+  await sleepUntil(CFG.timing.sample, isMain ? null : bail);
+  if (bail()) return dropped();
+
+  clearCanvas(); drawImages(offsets, null);
+  drawChoiceZones(offsets);
+  if (showGauge) drawGauges(offsets);
+  if (showHints) drawKeyHints(offsets);
+
+  let { chosen, rt } = await waitForChoice(offsets, isMain ? null : () => practiceAbort);
+  record.rt_ms = Math.round(rt);
+  if (bail()) return dropped();
+
+  if (chosen === -1 && !isMain) {
+    // v3.2 PRACTICE ONLY — do not skip. Mark the better target and keep waiting.
+    //
+    // v3.3 FIX: "better" is the target with the higher chance RIGHT NOW, which
+    // includes the accumulation built up on whichever image has been skipped.
+    // v3.2 compared base probabilities only, so after a few picks in a row it
+    // pointed at the wrong image — the one whose gauge was visibly lower.
+    // This uses getGaugeLevel on the live gaugeState, i.e. exactly the quantity
+    // the gauge bar on screen is showing, so hint and gauge can never disagree.
+    // (gaugeState is updated after the choice, so here it still holds the
+    // pre-choice values the participant is looking at.)
+    const basePs = [currentP1, currentP2];
+    const betterNow = () => {
+      const eff = [0, 1].map(i =>
+        showGauge ? getGaugeLevel(basePs[i], gaugeState[i].n) : basePs[i]);
+      return eff[0] >= eff[1] ? 0 : 1;
+    };
+    record.hint_shown = 1;
+    const tHint = performance.now();
+    let betterIdx = betterNow();
+    while (chosen === -1) {
+      // v3.5: "Back to menu" must escape this wait too, otherwise leaving during
+      // a hint stalls until the 60 s cap. Falls through to the timeout branch,
+      // which records an invalid trial; runPractice then unwinds on the flag.
+      if (practiceAbort) break;
+      const elapsed = performance.now() - tHint;
+      betterIdx = betterNow();
+      if (elapsed >= PRACTICE_HINT_CAP_MS) {
+        // Cap reached — take the hinted (higher-chance) target on their behalf
+        // so practice cannot stall. hint_shown = 2 marks these trials.
+        chosen = betterIdx;
+        record.hint_shown = 2;
+        break;
+      }
+      clearCanvas();
+      drawImages(offsets, null);
+      drawChoiceZones(offsets);
+      if (showGauge) drawGauges(offsets);
+      if (showHints) drawKeyHints(offsets);
+      drawPracticeHint(offsets, betterIdx, PRACTICE_HINT_CAP_MS - elapsed);
+      const again = await waitForChoice(offsets, () => practiceAbort);
+      chosen = again.chosen;
+    }
+    if (bail()) return dropped();
+    record.rt_ms = Math.round(performance.now() - tHint) + CFG.timing.choiceTimeout;
+  }
+
+  if (chosen === -1) {
+    // Timeout — not a valid trial, gauge does NOT accumulate  (main task only)
+    record.correct = 0; record.error = 5; record.target_chosen = -1;
+    allTrialData.push(record);
+    clearCanvas(); await sleep(CFG.timing.iti); return { ...record, valid: false };
+  }
+  record.correct = 1; record.error = 0; record.target_chosen = chosen + 1;
+
+  // Update gauge accumulation
+  if (showGauge) {
+    gaugeState[chosen].n = 0;
+    gaugeState[1 - chosen].n++;
+  }
+
+  clearCanvas(); drawImages(offsets, chosen);
+  await sleepUntil(200, isMain ? null : bail);
+  if (bail()) return dropped();
+
+  const rew = calcReward(chosen);
+  record.reward = rew.rewarded ? 1 : 0;
+  record.P_reward = +rew.P_reward.toFixed(4);
+  record.sequence = rew.sequence;
+  if (rew.rewarded) totalScore++;
+
+  clearCanvas(); drawFeedback(rew.rewarded);
+  document.getElementById('hud-score').textContent = totalScore;
+  await sleepUntil(CFG.timing.feedback, isMain ? null : bail);
+  if (bail()) return dropped();
+
+  allTrialData.push(record);
+  clearCanvas();
+  // trial is already recorded here, so an abort during the ITI keeps it
+  await sleepUntil(CFG.timing.iti, isMain ? null : bail);
+  return { ...record, valid: true };
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  BLOCK
+// ═══════════════════════════════════════════════════════════════
+async function runBlock(blockNum, pairIdx) {
+  const pair = CFG.pairP[pairIdx];
+  currentP1 = pair[0]; currentP2 = pair[1];
+  choiceSequence = 0; lastChoice = null;
+  const n = randInt(...CFG.valdecBlockLength);
+  let valid = 0;
+  while (valid < n) {
+    await checkPause();
+    updateHUD(blockNum, CFG.numCycles * CFG.cyclePattern.length, valid + 1, n);
+    const rec = await runTrial(blockNum, valid, n);
+    if (rec.valid) valid++;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  PAUSE
+// ═══════════════════════════════════════════════════════════════
+let isPaused = false, pauseResolve = null, pauseUsed = false;
+function showPauseOverlay() {
+  isPaused = true;
+  document.getElementById('pause-info').innerHTML =
+    `Score so far: <strong>${totalScore}</strong><br>Click Resume when ready.`;
+  document.getElementById('pause-overlay').style.display = 'flex';
+}
+function hidePauseOverlay() {
+  isPaused = false; pauseUsed = true;
+  document.getElementById('pause-overlay').style.display = 'none';
+  document.getElementById('pause-btn').disabled = true;
+  document.getElementById('pause-note').textContent = 'pause used';
+  if (pauseResolve) { pauseResolve(); pauseResolve = null; }
+}
+function checkPause() {
+  if (!isPaused) return Promise.resolve();
+  return new Promise(r => { pauseResolve = r; });
+}
+// v3.5: leave practice and return to the menu
+document.getElementById('practice-exit-btn').addEventListener('click', () => {
+  practiceAbort = true;
+  if (practiceWaitResolve) practiceWaitResolve();   // unblock an intro/notice screen
+});
+document.getElementById('pause-btn').addEventListener('click', () => { if (!pauseUsed) showPauseOverlay(); });
+document.getElementById('resume-btn').addEventListener('click', hidePauseOverlay);
+
+// ═══════════════════════════════════════════════════════════════
+//  MAIN TASK
+// ═══════════════════════════════════════════════════════════════
+async function runMainTask() {
+  setPIndex = generateSet(CFG.pairP.length, 25);
+  document.getElementById('pause-wrap').style.display = 'flex';
+
+  let pIdx = 0, block = 0;
+  const total = CFG.numCycles * CFG.cyclePattern.length;
+
+  for (let c = 0; c < CFG.numCycles; c++) {
+    for (let b = 0; b < CFG.cyclePattern.length; b++) {
+      block++;
+      await runBlock(block, setPIndex[pIdx++]);
+      submitData();          // fire-and-forget per block
+      await checkPause();
+    }
+  }
+  document.getElementById('pause-wrap').style.display = 'none';
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  PRACTICE  (4 blocks × 12 trials, gauge + hints shown)
+// ═══════════════════════════════════════════════════════════════
+// v3: practice now uses the SAME TWO LEVELS as the main task, both sides, in the
+// same interleaved way. v2 practised 0.75/0.25 only, so participants met the
+// small-gap (66/33) level for the first time in the main task — where it fills
+// 10 of the 20 blocks and where pilot accuracy fell to chance (0.497).
+// Block order puts a small-gap block second so the hard case is met early, while
+// the gauge is still visible to explain it.
+// Total practice: 48 trials (v2: 30). This is the ONLY trial-count change in v3
+// and it is instructional, not part of the analysed schedule.
+const PRAC_BLOCKS = [
+  { p1: P_HI_EASY, p2: P_LO_EASY, n: 12 },   // big gap,   left better
+  { p1: P_LO_HARD, p2: P_HI_HARD, n: 12 },   // small gap, right better
+  { p1: P_LO_EASY, p2: P_HI_EASY, n: 12 },   // big gap,   right better
+  { p1: P_HI_HARD, p2: P_LO_HARD, n: 12 },   // small gap, left better
+];
+
+// Returns true if the full practice ran, false if the participant left early
+// via "Back to menu" (v3.5).
+async function runPractice() {
+  practiceAttempt++;
+  practiceAbort = false;
+  const totalPrac = PRAC_BLOCKS.reduce((s, b) => s + b.n, 0);
+  let cumulative  = 0;
+
+  // Practice intro — wait for any key or click
+  clearCanvas();
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.font = 'bold 30px system-ui'; ctx.fillStyle = '#e2b714';
+  ctx.fillText('Practice Session', W/2, H/2 - 68);
+  ctx.font = '18px system-ui'; ctx.fillStyle = '#b0b0c8';
+  ctx.fillText('Gauge bars are shown above each image to help you learn.', W/2, H/2 - 18);
+  ctx.font = '16px system-ui'; ctx.fillStyle = '#888';
+  ctx.fillText('Note: they will NOT be visible in the main task.', W/2, H/2 + 14);
+  ctx.font = '15px system-ui'; ctx.fillStyle = 'rgba(226,183,20,.6)';
+  ctx.fillText('Press any key or click to begin', W/2, H/2 + 60);
+  ctx.textBaseline = 'alphabetic';
+  await new Promise(resolve => {
+    const done = () => { cleanup(); practiceWaitResolve = null; resolve(); };
+    const onKey   = ()  => done();
+    const onClick = ()  => done();
+    function cleanup() {
+      document.removeEventListener('keydown', onKey);
+      taskCanvas.removeEventListener('click', onClick);
+    }
+    practiceWaitResolve = done;          // "Back to menu" unblocks this screen
+    document.addEventListener('keydown', onKey,   { once: true });
+    taskCanvas.addEventListener('click',  onClick, { once: true });
+  });
+  if (practiceAbort) return false;
+
+  for (let bi = 0; bi < PRAC_BLOCKS.length; bi++) {
+    const pb = PRAC_BLOCKS[bi];
+    currentP1 = pb.p1; currentP2 = pb.p2;
+    choiceSequence = 0; lastChoice = null;
+    gaugeState = [{ n: 0 }, { n: 0 }];
+
+    if (bi > 0) {
+      // Inter-block switch notice — wait for click or keypress
+      clearCanvas();
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.font = 'bold 28px system-ui'; ctx.fillStyle = '#e2b714';
+      ctx.fillText('Probabilities have switched!', W/2, H/2 - 54);
+      ctx.font = '18px system-ui'; ctx.fillStyle = '#b0b0c8';
+      ctx.fillText('The reward probabilities of the images have changed.', W/2, H/2 - 8);
+      ctx.fillText('Pick images to discover which now has the higher reward probability.', W/2, H/2 + 22);
+      ctx.font = '14px system-ui'; ctx.fillStyle = '#666';
+      ctx.fillText('Note: in the actual task, no such notification will appear.', W/2, H/2 + 58);
+      ctx.font = '15px system-ui'; ctx.fillStyle = 'rgba(226,183,20,.6)';
+      ctx.fillText('Press any key or click to continue', W/2, H/2 + 90);
+      ctx.textBaseline = 'alphabetic';
+      await new Promise(resolve => {
+        const done = () => { cleanup(); practiceWaitResolve = null; resolve(); };
+        const onKey   = () => done();
+        const onClick = () => done();
+        function cleanup() {
+          document.removeEventListener('keydown', onKey);
+          taskCanvas.removeEventListener('click', onClick);
+        }
+        practiceWaitResolve = done;      // "Back to menu" unblocks this screen
+        document.addEventListener('keydown', onKey,   { once: true });
+        taskCanvas.addEventListener('click',  onClick, { once: true });
+      });
+      if (practiceAbort) return false;
+    }
+
+    let v = 0;
+    while (v < pb.n) {
+      if (practiceAbort) return false;
+      // Show total trial count (1–30) rather than per-block count
+      updateHUD(cumulative + v + 1, totalPrac, cumulative + v + 1, totalPrac);
+      const rec = await runTrial(bi + 1, v, pb.n, true, true, 'practice');
+      if (rec.valid) v++;
+    }
+    if (practiceAbort) return false;
+    cumulative += pb.n;
+  }
+  return true;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  END SCREEN
+// ═══════════════════════════════════════════════════════════════
+async function showEndScreen() {
+  taskCanvas.style.display = 'none';
+  document.getElementById('hud').style.display = 'none';
+  document.getElementById('end-stats').innerHTML =
+    `Total score: <strong style="color:#e2b714">${totalScore}</strong>`;
+  document.getElementById('completion-code').textContent = RESEARCHER_CFG.completionCode;
+  document.getElementById('prolific-link').href = RESEARCHER_CFG.prolificRedirectURL;
+  document.getElementById('end-screen').style.display = 'flex';
+
+  const el = document.getElementById('submission-status');
+  el.textContent = 'Saving your data…';
+  const res = await submitFinalData();
+  el.textContent = (res === 'ok' || res === 'no_url') ? '' :
+    'Data submission issue — please contact the researcher.';
+  if (res === 'error') el.style.color = '#ff6666';
+
+  // Redirect URL is shown as a button — no auto-redirect
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  DATA SUBMISSION
+// ═══════════════════════════════════════════════════════════════
+// Global test/real toggle — mirrors the jsPsych-pipe convention of gating the real
+// OSF/DataPipe save behind a flag during development, so test runs never touch the
+// real dataset. Change to 'real' only when actually collecting subjects on Prolific.
+const RUN_MODE = 'real';   // 'test' | 'real'
+
+const DATAPIPE_URL = 'https://pipe.jspsych.org/api/data/';
+
+// Triggers a browser download instead of pinging DataPipe/OSF — used in 'test' mode.
+function downloadCSV(filename, csv) {
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+}
+
+function buildCSV(rows) {
+  if (!rows.length) return '';
+  const hdrs = Object.keys(rows[0]);
+  const csvRows = rows.map(d =>
+    hdrs.map(h => { const v = d[h] ?? ''; return String(v).includes(',') ? `"${v}"` : v; }).join(',')
+  );
+  return [hdrs.join(','), ...csvRows].join('\n');
+}
+
+async function pipeSave(filename, csv) {
+  try {
+    const res = await fetch(DATAPIPE_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Accept': '*/*' },
+      body: JSON.stringify({
+        experimentID: RESEARCHER_CFG.datapipeExperimentID,
+        filename,
+        data: csv,
+      }),
+    });
+    // A resolved fetch() does NOT mean DataPipe accepted the data — it only means the
+    // HTTP round-trip happened. DataPipe returns 4xx/5xx with a JSON error body (e.g.
+    // missing/invalid required fields, experiment not found, OSF token issues) on
+    // rejection. Without checking res.ok here, those rejections were previously
+    // swallowed as silent "success".
+    if (!res.ok) {
+      let body = null;
+      try { body = await res.json(); } catch (_) { /* non-JSON error body */ }
+      console.error(`[pipeSave] DataPipe rejected "${filename}" (HTTP ${res.status}):`, body || res.statusText);
+      return 'error';
+    }
+    return 'ok';
+  } catch (e) {
+    console.error(`[pipeSave] Network error saving "${filename}":`, e);
+    return 'error';
+  }
+}
+
+// Per-block backup save — each block gets its own unique filename (DataPipe rejects
+// re-saves to an existing filename), containing ALL data collected so far. This means
+// if a participant drops out mid-task, the most recently saved block file still has
+// everything up to that point.
+// In RUN_MODE='test' this never touches DataPipe/OSF — it's a no-op (block-level
+// backups aren't needed for local debugging; only the final files are downloaded).
+let blockSaveCount = 0;
+async function submitData() {
+  if (RUN_MODE !== 'real') return 'ok';
+  if (!RESEARCHER_CFG.datapipeExperimentID) return 'no_url';
+  if (!allTrialData.length) return 'ok';
+  blockSaveCount++;
+  const filename = `${subjectId}_block${String(blockSaveCount).padStart(2, '0')}.csv`;
+  return await pipeSave(filename, buildCSV(allTrialData));
+}
+
+// Checkpoint save called once, right after practice ends (before the main task even
+// starts). Covers practice trials (phase:'practice') and tutorial events so far, under
+// their own filenames distinct from the final save — this way a participant who
+// completes practice but never starts/finishes the main task still leaves saved data,
+// instead of everything being lost if they drop out before submitFinalData() ever runs.
+// RUN_MODE='test' → downloads locally; RUN_MODE='real' → posts to DataPipe/OSF.
+async function submitPracticeData() {
+  if (RUN_MODE !== 'real') {
+    if (allTrialData.length)    downloadCSV(`${subjectId}_practice_TEST.csv`,         buildCSV(allTrialData));
+    if (allTutorialData.length) downloadCSV(`${subjectId}_tutorial_practice_TEST.csv`, buildCSV(allTutorialData));
+    return 'ok';
+  }
+  if (!RESEARCHER_CFG.datapipeExperimentID) return 'no_url';
+  const tasks = [];
+  if (allTrialData.length)    tasks.push(pipeSave(`${subjectId}_practice.csv`,         buildCSV(allTrialData)));
+  if (allTutorialData.length) tasks.push(pipeSave(`${subjectId}_tutorial_practice.csv`, buildCSV(allTutorialData)));
+  if (!tasks.length) return 'ok';
+  const outcomes = await Promise.all(tasks);
+  return outcomes.includes('error') ? 'error' : 'ok';
+}
+
+// Final authoritative save, called once at the very end of the task.
+// Saves two files: one with all trial-level data (tutorial demo clicks excluded —
+// see _tutorial.csv for those) covering both practice and main-task trials
+// (distinguished by the `phase` column), and one with tutorial events
+// (step views, demo clicks, comprehension check answers).
+// RUN_MODE='test' → downloads both CSVs locally to the browser, no network call at all.
+// RUN_MODE='real' → posts both to DataPipe/OSF as before.
+async function submitFinalData() {
+  if (RUN_MODE !== 'real') {
+    if (allTrialData.length)    downloadCSV(`${subjectId}_trials_TEST.csv`,   buildCSV(allTrialData));
+    if (allTutorialData.length) downloadCSV(`${subjectId}_tutorial_TEST.csv`, buildCSV(allTutorialData));
+    return 'ok';
+  }
+  if (!RESEARCHER_CFG.datapipeExperimentID) return 'no_url';
+  const tasks = [];
+  if (allTrialData.length)    tasks.push(pipeSave(`${subjectId}_trials.csv`,   buildCSV(allTrialData)));
+  if (allTutorialData.length) tasks.push(pipeSave(`${subjectId}_tutorial.csv`, buildCSV(allTutorialData)));
+  if (!tasks.length) return 'ok';
+  const outcomes = await Promise.all(tasks);
+  return outcomes.includes('error') ? 'error' : 'ok';
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  OPTIMAL SCORE  (mirrors calcReward logic exactly)
+// ═══════════════════════════════════════════════════════════════
+function computeOptimalPracticeScore() {
+  // Simulate the optimal greedy strategy across all practice blocks:
+  // at each trial, choose whichever option has the higher effective probability.
+  // Switch as soon as P_unchosen > P_chosen (= base P of current image).
+  let total = 0;
+  for (const pb of PRAC_BLOCKS) {
+    let p = [pb.p1, pb.p2];
+    let cseq = 0, last = null;
+    for (let t = 0; t < pb.n; t++) {
+      let optIdx, P;
+      if (last === null) {
+        optIdx = p[0] >= p[1] ? 0 : 1;
+        P      = p[optIdx];
+        cseq   = 0;
+      } else {
+        const pSame   = p[last];
+        const pSwitch = 1 - Math.pow(1 - p[1 - last], cseq + 1);
+        if (pSwitch > pSame) {
+          optIdx = 1 - last;
+          P      = pSwitch;
+          cseq   = 1;
+        } else {
+          optIdx = last;
+          P      = pSame;
+          cseq++;
+        }
+      }
+      last = optIdx;
+      total += P;
+    }
+  }
+  return total;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  START FLOWS  (called from landing cards)
+// ═══════════════════════════════════════════════════════════════
+function mountTaskCanvas() {
+  document.getElementById('landing-screen').style.display = 'none';
+  taskCanvas.style.display = 'block';
+  document.getElementById('hud').style.display = 'flex';
+  resizeCanvas();
+}
+
+function updateLandingState() {
+  const done = practiceCompleted;
+  document.getElementById('landing-title').textContent = done ? 'Ready to go!' : 'Almost there!';
+  document.getElementById('landing-sub').textContent   = done
+    ? 'Choose an option below' : 'Complete the practice session before starting';
+  const sc = document.getElementById('start-card');
+  sc.style.opacity = done ? '1' : '0.4';
+  sc.style.cursor  = done ? 'pointer' : 'not-allowed';
+  document.getElementById('start-cd').textContent = done ? '1 pause available · no hints' : 'Complete practice first';
+  const pb = document.getElementById('practice-badge');
+  if (done) pb.style.display = 'none';
+}
+
+async function startPracticeFlow() {
+  mountTaskCanvas();
+  document.getElementById('hud-trial-item').style.display  = '';
+  document.getElementById('hud-block-item').style.display  = '';
+  document.getElementById('hud-prog-wrap').style.display   = 'none';
+  document.getElementById('practice-exit-wrap').style.display = 'flex';   // v3.5
+  totalScore = 0;   // allTrialData persists — practice trials are kept (tagged phase:'practice')
+
+  const finished = await runPractice();
+  document.getElementById('practice-exit-wrap').style.display = 'none';
+  submitPracticeData();   // fire-and-forget checkpoint save (partial runs kept too)
+
+  if (!finished) {
+    // v3.5: left early — trials so far are kept, but practice is NOT marked
+    // complete, so the Start Task card stays locked until one full run.
+    logTutorial('practice_exit_early', {
+      attempt: practiceAttempt,
+      trials_done: allTrialData.filter(d => d.phase === 'practice'
+                     && d.practiceAttempt === practiceAttempt).length,
+    });
+    document.getElementById('hud').style.display = 'none';
+    taskCanvas.style.display = 'none';
+    totalScore = 0;
+    updateLandingState();
+    document.getElementById('landing-screen').style.display = 'flex';
+    return;
+  }
+
+  // ── Practice-end summary screen ──────────────────────────────
+  const practiceScore = totalScore;
+  const optimalScore  = computeOptimalPracticeScore();
+  const totalPrac     = PRAC_BLOCKS.reduce((s, b) => s + b.n, 0);
+
+  document.getElementById('hud').style.display = 'none';
+  clearCanvas();
+
+  const pct = Math.round(practiceScore / totalPrac * 100);
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+
+  // Header
+  ctx.font = 'bold 36px system-ui'; ctx.fillStyle = '#e2b714';
+  ctx.fillText('🎉 Great job!', W/2, H/2 - 110);
+
+  // Score table
+  const rowY = H/2 - 36, rowH2 = 44;
+  ctx.font = '20px system-ui'; ctx.fillStyle = '#b0b0c8';
+  ctx.fillText('Your score', W/2 - 110, rowY);
+  ctx.font = 'bold 28px system-ui'; ctx.fillStyle = '#e2b714';
+  ctx.fillText(`${practiceScore} / ${totalPrac}`, W/2 + 90, rowY);
+
+  ctx.font = '20px system-ui'; ctx.fillStyle = '#b0b0c8';
+  ctx.fillText('Optimal strategy (expected)', W/2 - 110, rowY + rowH2);
+  ctx.font = 'bold 28px system-ui'; ctx.fillStyle = 'rgba(144,202,249,.85)';
+  ctx.fillText(`~${Math.round(optimalScore)} / ${totalPrac}`, W/2 + 90, rowY + rowH2);
+
+  // Divider
+  ctx.strokeStyle = 'rgba(255,255,255,.1)'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(W/2 - 220, rowY + rowH2/2 + 2); ctx.lineTo(W/2 + 220, rowY + rowH2/2 + 2); ctx.stroke();
+
+  // Explanation
+  ctx.font = '14px system-ui'; ctx.fillStyle = 'rgba(255,255,255,.35)';
+  ctx.fillText('Optimal = picking the image whose reward probability is currently highest', W/2, rowY + rowH2 + 38);
+
+  // Prompt
+  ctx.font = '15px system-ui'; ctx.fillStyle = 'rgba(226,183,20,.6)';
+  ctx.fillText('Press any key or click to continue', W/2, H/2 + 130);
+
+  ctx.textBaseline = 'alphabetic';
+
+  await new Promise(resolve => {
+    const onKey   = () => { cleanup(); resolve(); };
+    const onClick = () => { cleanup(); resolve(); };
+    function cleanup() {
+      document.removeEventListener('keydown', onKey);
+      taskCanvas.removeEventListener('click', onClick);
+    }
+    document.addEventListener('keydown', onKey,   { once: true });
+    taskCanvas.addEventListener('click',  onClick, { once: true });
+  });
+
+  // Mark practice complete and return to landing
+  practiceCompleted = true;
+  taskCanvas.style.display = 'none';
+  updateLandingState();
+  document.getElementById('landing-screen').style.display = 'flex';
+  totalScore = 0;   // allTrialData kept — practice records remain for the saved log
+}
+
+async function startMainFlow() {
+  mountTaskCanvas();
+  document.getElementById('hud-trial-item').style.display  = 'none';
+  document.getElementById('hud-block-item').style.display  = 'none';
+  document.getElementById('hud-prog-wrap').style.display   = 'flex';
+  // Reset pause state
+  isPaused = false; pauseUsed = false; pauseResolve = null;
+  document.getElementById('pause-btn').disabled = false;
+  document.getElementById('pause-note').textContent = '1 pause available';
+  totalScore = 0;   // allTrialData persists — main task records get appended (phase:'main'), practice ones stay
+
+  await runMainTask();
+  await showEndScreen();
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  KEYBOARD
+// ═══════════════════════════════════════════════════════════════
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowLeft')  { keyPressed = 'left';  e.preventDefault(); }
+  if (e.key === 'ArrowRight') { keyPressed = 'right'; e.preventDefault(); }
+});
+
+// ═══════════════════════════════════════════════════════════════
+//  RESIZE
+// ═══════════════════════════════════════════════════════════════
+function resizeCanvas() {
+  W = taskCanvas.width  = window.innerWidth;
+  H = taskCanvas.height = window.innerHeight;
+  taskImgs[0] = makeCanvas(CFG.imageSize, drawImageA);
+  taskImgs[1] = makeCanvas(CFG.imageSize, drawImageB);
+}
+window.addEventListener('resize', resizeCanvas);
+resizeCanvas();
+</script>
+</body>
+</html>
